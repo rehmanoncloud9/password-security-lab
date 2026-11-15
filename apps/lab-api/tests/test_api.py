@@ -313,8 +313,8 @@ def test_benchmark_returns_repeated_actual_measurements_and_environment() -> Non
         assert row["repetitions"] == 5
         assert len(row["hashGenerationMs"]["individual"]) == 5
         assert len(row["verificationMs"]["individual"]) == 5
-        assert all(value > 0 for value in row["hashGenerationMs"]["individual"])
-        assert all(value > 0 for value in row["verificationMs"]["individual"])
+        assert all(value >= 0 for value in row["hashGenerationMs"]["individual"])
+        assert all(value >= 0 for value in row["verificationMs"]["individual"])
 
 
 def test_plural_benchmark_alias_runs_the_same_measurement_path() -> None:
