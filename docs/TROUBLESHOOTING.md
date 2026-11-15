@@ -1,8 +1,16 @@
 # Troubleshooting
 
-## npm install reports `ENOTCACHED`
+## npm reports `ENOTCACHED`, `ECONNREFUSED`, or lifecycle `EPERM`
 
-The local npm configuration is cache-only and the package cache lacks project dependencies. Check `npm config get offline` and `npm config get prefer-offline`; install from an approved registry/cache, then generate and review `package-lock.json`. Do not claim a frontend build until typecheck/tests/build run.
+The genuine npm lock is present. In this managed shell, process environment variables set `NPM_CONFIG_OFFLINE=true` and HTTP(S)/ALL proxy URLs to `127.0.0.1:9`. Removing those variables for the current process and using a writable temporary npm cache allowed real registry installs and audit. Normal `npm ci` still fails when npm starts lifecycle scripts with `spawn EPERM`; use a process-capable development machine for the full clean install. Do not hand-edit the lock or disable network security controls.
+
+## Vite or Vitest reports `spawn EPERM`
+
+The managed Windows sandbox denies child-process creation. Vite/esbuild config startup and Vitest worker/path probing fail before the app or core tests execute. Core TypeScript typechecks, direct Node core checks and web SSR checks do not require those workers and passed. Repeat the blocked commands on a normal development machine or CI runner; do not mark build/Vitest gates passed based on TypeScript alone.
+
+## Python package install says no versions are available
+
+Check whether the environment sets `PIP_NO_INDEX=1`. Removing that process setting exposed a TLS issuer-verification failure at PyPI in this host. Do not use `--trusted-host` or disable certificate validation. Use a trusted PyPI connection with a valid certificate chain; see [External Verification Procedure](REGISTRY-ENABLED-SETUP.md).
 
 ## UI says local lab unavailable
 

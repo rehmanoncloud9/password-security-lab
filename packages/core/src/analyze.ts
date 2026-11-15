@@ -1,4 +1,4 @@
-import { estimator, ESTIMATOR_VERSION, MAX_PASSWORD_CODE_POINTS } from "./estimator.js";
+import { checkPassword, ESTIMATOR_VERSION, MAX_PASSWORD_CODE_POINTS } from "./estimator.js";
 import { InputLimitError, type AnalysisResult, type PatternFinding, type StrengthBand } from "./types.js";
 
 const PATTERN_EXPLANATIONS: Readonly<Record<string, string>> = {
@@ -28,18 +28,23 @@ function profile(password: string, codePoints: number): AnalysisResult["characte
   };
 }
 
-function makeFindings(matches: readonly { pattern: string }[]): PatternFinding[] {
+function makeFindings(matches: readonly { readonly pattern: string; readonly l33t?: boolean }[]): PatternFinding[] {
   const used = new Set<string>();
   return matches.flatMap((match) => {
-    const explanation = PATTERN_EXPLANATIONS[match.pattern];
-    if (!explanation || used.has(match.pattern)) return [];
-    used.add(match.pattern);
-    return [{
-      id: `pattern-${match.pattern}`,
-      pattern: match.pattern,
-      severity: match.pattern === "bruteForce" ? "information" as const : "warning" as const,
-      explanation,
-    }];
+    const patterns = match.pattern === "dictionary" && match.l33t
+      ? ["dictionary", "l33t"]
+      : [match.pattern];
+    return patterns.flatMap((pattern) => {
+      const explanation = PATTERN_EXPLANATIONS[pattern];
+      if (!explanation || used.has(pattern)) return [];
+      used.add(pattern);
+      return [{
+        id: `pattern-${pattern}`,
+        pattern,
+        severity: pattern === "bruteforce" ? "information" as const : "warning" as const,
+        explanation,
+      }];
+    });
   });
 }
 
@@ -54,7 +59,7 @@ export function analyzePassword(password: string): AnalysisResult {
     throw new InputLimitError(`Input exceeds the ${MAX_PASSWORD_CODE_POINTS} Unicode code point limit.`);
   }
   const input = profile(password, codePoints);
-  const result = estimator.check(password);
+  const { result, findings } = checkPassword(password);
   const score = Math.max(0, Math.min(4, result.score)) as 0 | 1 | 2 | 3 | 4;
   return {
     estimator: {
@@ -65,7 +70,7 @@ export function analyzePassword(password: string): AnalysisResult {
     score,
     band: BANDS[score] ?? "very_weak",
     estimatedGuesses: Number.isFinite(result.guesses) ? Math.max(1, result.guesses) : Number.MAX_VALUE,
-    findings: makeFindings(result.sequence),
+    findings: makeFindings([...result.sequence, ...findings]),
     suggestions: [...new Set(result.feedback?.suggestions ?? [])].slice(0, 4),
     characterProfile: input,
     limitations: [

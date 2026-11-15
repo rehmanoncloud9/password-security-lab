@@ -20,11 +20,12 @@ The product processes password-like values. The analyzer treats every browser in
 ## Security review status
 
 Python API/crypto behavior has unit and TestClient coverage, Ruff static checks pass,
-and source boundary lint passes. No browser build, network-interception test,
-dependency advisory scanner, external penetration test, or accessibility audit has
-run. GitHub scanner workflows are configured but unexecuted. npm resolution was
-blocked by cache-only mode plus a refused proxy; Python clean venv validation failed
-because wheels were unavailable offline. See [Security Audit](SECURITY-AUDIT.md),
+source boundary lint passes, and the live npm audit reports zero findings after
+patching affected Vite/Vitest versions. Compiled-core behavior checks and nine React
+server-render checks pass, but Vitest and Vite startup hit `spawn EPERM` in the
+managed Windows sandbox. No browser build, network-interception test, Python
+dependency advisory scan, Gitleaks, CodeQL, external penetration test, or
+accessibility audit has run. See [Security Audit](SECURITY-AUDIT.md),
 [Security Test Results](SECURITY-TEST-RESULTS.md), and
 [Privacy Verification](PRIVACY-VERIFICATION.md).
 

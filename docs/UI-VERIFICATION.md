@@ -1,27 +1,27 @@
 # UI Verification
 
-**Status: NOT RUN for rendered behavior.** Source adjustments now use a filled blue
-active top-navigation tab, wider desktop navigation/operations rails, readable
-inspection tables and console text, and an interactive service selection/details
-split pane on Overview. Violet/gold tokens were removed; the source palette scan
-contains only the established blue, cyan, green, red and neutral colors. The React source
-and styles still could not be rendered because npm dependency resolution is blocked.
-The approved screenshot was not present as a workspace file, and no Chromium browser
-surface was available, so image comparison and screenshots were not possible.
+**Rendered-browser status: NOT RUN. No screenshots were produced.** The computer-use inventory returned no browser or app surfaces. The Vite development server failed before listening because esbuild could not spawn a child process (`EPERM`). The approved screenshot image itself was not present in the accessible repository workspace, so no visual comparison is claimed.
 
-| Acceptance check | Status | Evidence/remaining action |
+## Verification evidence available
+
+- `npm run lint` passed the source-boundary checks and selected semantic text/action contrast tokens for light and dark themes.
+- `npm test --workspace @psa/web` passed 9 React server-render checks. They rendered navigation/selected states, both theme variants, analysis, policy, generator/reuse controls, hashing unavailable state, bounded attack controls, benchmark/report empty states and theme preference handling.
+- Clean-output `npm run typecheck` passed for core, web and SDK workspaces.
+- Dynamic imports and `React.lazy` remain in TypeScript output, but no Vite bundle or after-size measurement could be produced.
+
+## Acceptance matrix
+
+| Check | Status | Evidence/remaining work |
 |---|---|---|
-| TypeScript compile and production build | BLOCKED | `npm install` failed with `ENOTCACHED`; no lockfile or `node_modules` |
-| Rendered light-theme composition | NOT RUN | No installable dependency graph or Chromium surface; capture after restoring registry/browser access |
-| Rendered dark theme and toggle persistence | NOT RUN | Verify browser local storage contains only `psl-theme` |
-| Reference screenshot comparison | BLOCKED | Screenshot was not supplied in accessible workspace |
-| 11 destinations, module search, and interactive service details | NOT RUN | Browser keyboard and pointer journeys pending |
-| Required screenshots | NOT RUN | Capture 1648×928, 1440×900, 1024×768, and 390×844 after the app can run |
-| Narrow viewport layouts | NOT RUN | Inspect required 1024×768 tablet and 390×844 mobile views, plus responsive boundaries |
-| Keyboard navigation/focus | NOT RUN | Walk top bar, sidebar, forms, tabs, dialogs, export, and cancel controls |
-| Screen reader and contrast | NOT RUN | Run manual AT review and contrast measurement in both themes |
-| Analyzer network/privacy canary | NOT RUN | Observe browser network panel while entering a synthetic analyzer value |
-| Hash/attack API integration | Python API only | Python integration suite passes; React-to-API browser journey pending |
+| Application startup in browser | BLOCKED | `npm run dev` builds/watches core, then esbuild spawn returns `EPERM` |
+| Major-screen component rendering | PARTIAL | Nine Node/React server-render checks; no browser interaction or API wiring |
+| Navigation and search interaction | NOT RUN | Markup rendering does not prove keyboard/pointer/search behavior |
+| Light/dark visual interaction and persistence | PARTIAL | Both theme shells and preference helper rendered; no browser storage/click check |
+| Responsive behavior | NOT RUN | Browser not available |
+| Desktop overview/reference comparison | NOT RUN | No browser and no accessible reference asset; no screenshot fabricated |
+| Required 1648×928, 1440×900, 1024×768, 390×844 captures | NOT RUN | Capture in Chromium, inspect and compare before release |
+| Keyboard/focus/screen-reader behavior | NOT RUN | Requires browser and assistive-technology session |
+| Analyzer network/privacy canary | NOT RUN | Inspect actual network, console, storage and exports with synthetic values |
+| Production code-splitting/bundle size | NOT RUN | Vite cannot load config; after-change bundle size is unknown |
 
-Do not treat source-level provisions as visual, accessibility, or privacy runtime
-verification.
+No visual fidelity, browser accessibility, runtime privacy or E2E acceptance is claimed. The old measured bundle was 2,015.91 kB JS / 946.04 kB gzip; the new output size is NOT MEASURED.

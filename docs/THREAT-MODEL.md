@@ -35,9 +35,9 @@ The analysis core has no network or persistence dependency. The lab is a separat
 | Expensive KDF or attack exhausts resources | Local denial of service | Cost ceilings, two KDF slots, one active attack, max body/input, max attempts/time, bounded state | Native KDF call cannot be interrupted; hard process kill and stress testing are not implemented |
 | Caller turns lab into a real cracking tool | Credential compromise or abuse | Fixed synthetic target IDs and local candidate data; no import/remote target API | Source review and API tests pass; independent security review not done |
 | Job IDs are guessed or jobs cross-contaminate | Result disclosure or control | Random opaque IDs, local in-memory records, one active job, strict identifier validation and TTL | TTL cleanup and concurrency stress test remain incomplete |
-| Malicious dependency or vulnerable package | Code execution/privacy loss | Exact direct dependency versions; local lint and tests | No npm lockfile, transitive Python lock, or advisory scan available |
+| Malicious dependency or vulnerable package | Code execution/privacy loss | Genuine npm lockfile; exact dependency versions; local lint/typechecks | Live npm audit after patched Vite 7.3.8/Vitest 4.1.12 reports zero findings; Python advisory scan not run |
 | Weak/incorrect password storage implementation | Verifier compromise | Established libraries, per-hash random salts, stored parameters, constant-time comparison where applicable, malformed verifier checks | Cross-platform clean install and independent crypto review remain outstanding |
 
 ## Residual risks
 
-This is not a complete security audit. Browser runtime behavior, dependency advisories, Windows process isolation, long-running cleanup, screen-reader accessibility, and clean installation remain unverified. Findings and evidence are tracked in [Security Audit](SECURITY-AUDIT.md) and [Privacy Verification](PRIVACY-VERIFICATION.md).
+This is not a complete security audit. Browser runtime behavior, dependency remediation, Windows process isolation, long-running cleanup, screen-reader accessibility, and default lifecycle installation remain unverified. Findings and evidence are tracked in [Security Audit](SECURITY-AUDIT.md) and [Privacy Verification](PRIVACY-VERIFICATION.md).

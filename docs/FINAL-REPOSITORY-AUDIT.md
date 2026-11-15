@@ -40,7 +40,7 @@ The screenshot referenced by the new prompt is not available as a file or attach
 | Python baseline | `python -m pytest -q` from `apps/lab-api/`: **40 passed in 26.57 s**. `ruff format --check app tests` and `ruff check app tests` passed. |
 | Root privacy lint | `npm run lint`: passed, scanning six core and three web source files. |
 | npm test/typecheck/build | Failed because `vitest` and `tsc` are not installed. |
-| npm installation configuration | `NPM_CONFIG_OFFLINE=true` is present in the process environment; configured registry is `https://registry.npmjs.org/`. `npm config get userconfig` reports `C:\Users\pc\.npmrc`, but there is no evidence that this file sets offline mode. The cache lacks pinned package metadata needed for this workspace. HTTP(S)/ALL proxy variables point to `http://127.0.0.1:9`. |
+| npm installation configuration | `NPM_CONFIG_OFFLINE=true` is present in the process environment; configured registry is `https://registry.npmjs.org/`. `npm config get userconfig` reports a user-profile npmrc, but there is no evidence that this file sets offline mode. The cache lacks pinned package metadata needed for this workspace. HTTP(S)/ALL proxy variables point to `http://127.0.0.1:9`. |
 | pnpm offline resolution | `pnpm install --offline --no-frozen-lockfile` previously failed with `ERR_PNPM_NO_OFFLINE_META` for `vite@7.2.2`. pnpm also does not honor the npm `workspaces` field without `pnpm-workspace.yaml`. No usable pnpm lock remains. |
 | npm lock | `package-lock.json` absent. |
 | Python lock | Only direct dependency versions are pinned in `pyproject.toml`; no transitive/hash lock is present. |

@@ -1,54 +1,28 @@
 # Known Limitations
 
-## Release blockers
+## Release and verification blockers
 
-- JavaScript dependencies cannot be installed in the supplied environment. npm is
-  forced into cache-only mode (`NPM_CONFIG_OFFLINE=true`); an environment-scoped
-  online attempt was refused by proxy `127.0.0.1:9`. Consequently there is no
-  reviewed `package-lock.json`, no TypeScript compile/test/build, and no browser
-  verification. The GitHub CI workflow may resolve dependencies on a network-enabled
-  runner but uses dynamic npm resolution until a lock is committed.
-- The release candidate workflow intentionally requires `package-lock.json` and
-  `npm ci`, so it will stop until a reviewed lockfile is present.
-- Python tests and lint were run in the existing global environment, not a clean
-  project virtual environment. Python version pins are exact, but requirements files
-  do not include package artifact hashes; isolated installation has not been proven.
-- No end-to-end browser automation, visual screenshot comparison, keyboard-only
-  browser test, screen reader check, measured color contrast audit, or responsive
-  browser test was executed. The approved screenshot referenced in the prompt was
-  not present as an accessible workspace file.
-- GitHub CI, dependency audit, Gitleaks, and CodeQL workflows are configured but
-  have not executed from this local checkout.
-- The separate latest project ZIP, original PRD PDF, and Project Overview/Abstract
-  PDF were not accessible in the repository workspace. Requirement reconciliation
-  uses the available expanded documentation and Technical Plan.
-- The project includes a draft license for repository-authored material. Ownership,
-  contributor rights, and third-party notice obligations need confirmation before
-  redistribution. Nothing was published or deployed.
+- The root npm lock is genuine and resolves Vite 7.3.8 plus Vitest/`@vitest/mocker` 4.1.12; live `npm audit` reports zero vulnerabilities. Two clean `npm ci --ignore-scripts` runs installed 104 packages and preserved the lock hash. A normal `npm ci` lifecycle child process fails with host `spawn EPERM`.
+- Root typecheck passes from removed generated outputs. Core Vitest cannot start a worker; its thread-pool attempt hits Vite's Windows `net use` process probe. Vite/esbuild also cannot spawn, so the production build and dev server do not complete.
+- The npm registry was reachable only after clearing inherited proxy variables that pointed at `127.0.0.1:9` and using a writable temporary npm cache. No global settings were changed.
+- Python tests passed in the existing Python 3.10.11 environment (49 tests). A clean environment installation remains unverified: `PIP_NO_INDEX=1` was inherited; after removing it, PyPI TLS verification failed with `CERTIFICATE_VERIFY_FAILED`. The Python pins also have no artifact hashes.
+- `pip-audit`, Gitleaks and CodeQL were unavailable locally. GitHub Actions were not executed. No scanner or workflow pass is claimed.
+- No browser surface was available and Vite did not start. Browser E2E, required viewport screenshots, visual reference comparison, keyboard/screen-reader review and runtime network/storage privacy inspection remain unverified.
+- No after-splitting bundle size was generated; the prior 2,015.91 kB JS / 946.04 kB gzip is only the baseline.
+- The TypeScript analyzer adapter captures actual zxcvbn-ts matcher findings through a runtime-private property. Keep its regression cases when upgrading the pinned estimator library.
+- The clean source archive was generated and validated; regenerate it after any further documentation or source change.
+- The supplied UI reference and some original source PDFs were not accessible as files in this workspace; the implementation was reviewed against available source/docs, not an actual rendered screenshot comparison.
+- Ownership and third-party notice obligations still need review before redistribution. No public release/deployment occurred.
 
-## Product/security scope
+## Product and security scope
 
-- Pattern-aware strength output is an estimate from zxcvbn-ts and its bundled
-  dictionaries/matchers. It cannot know private context or guarantee resistance.
-- Policy blocklist coverage is the bundled common/English data and is not a
-  comprehensive current compromise corpus. A pass means only that the implemented
-  local checks found no failing condition.
-- Reuse detection is an in-memory heuristic with false-positive/negative risk. It
-  cannot detect cross-site reuse.
-- The authored dictionary contains seven words, and other candidate plans are fixed
-  and intentionally small. Attack demonstrations are educational and synthetic.
-- Cancellation and timeout checks are cooperative between candidate verifications.
-  A native KDF already in progress cannot be interrupted; it may finish after the
-  request for cancellation or nominal budget deadline.
-- API verifier/job state exists only in process memory. It is cleared on restart;
-  managed-runtime strings are not guaranteed to be zeroized.
-- Local CPU/memory health readings use psutil and represent the host process/system.
-  There is no Docker runtime or container metric.
-- Benchmarks are actual local measurements with a small repetition count; they are
-  not universal rankings or attacker-rate estimates.
-- HIBP exposure screening, PDF export, package publication, deployment, and Docker
-  Compose are not implemented. JSON/CSV session exports contain current-session
-  allowlisted result data, not plaintext input values.
+- Guessability is a zxcvbn-ts estimate, not an exact attack time or safety guarantee.
+- Local policy blocklist checks use bundled English/common dictionary data, not a comprehensive current breach corpus.
+- Reuse checks compare only an in-memory supplied sample set and can produce false positives/negatives; they cannot detect cross-site reuse.
+- The bundled educational wordlist and attack plans are intentionally small and target only synthetic lab verifiers. A native KDF already running cannot be interrupted immediately by cooperative cancellation.
+- API demo verifier/job state is in process memory and is not guaranteed to be zeroized from managed-runtime memory.
+- Host CPU/memory readings use psutil; there is no Docker runtime or container metric.
+- Benchmarks are actual local measurements, but small local samples are not universal algorithm rankings or attacker-rate predictions.
+- HIBP exposure screening, PDF export, package publication, deployment and Docker Compose remain unimplemented/deferred. JSON/CSV session exports are allowlisted result data and must not include plaintext credentials.
 
-These limitations are tracked in [Requirement Traceability](REQUIREMENT-TRACEABILITY.md),
-[Security Audit](SECURITY-AUDIT.md), and [Implementation Status](../IMPLEMENTATION-STATUS.md).
+Track current status in [Implementation Status](../IMPLEMENTATION-STATUS.md) and [Requirement Traceability](REQUIREMENT-TRACEABILITY.md).

@@ -10,14 +10,14 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json --pretty false",
     "test": "vitest run"
   },
   "dependencies": {
     "@zxcvbn-ts/core": "4.2.0",
     "@zxcvbn-ts/language-common": "4.2.0",
-    "@zxcvbn-ts/language-en": "4.2.0"
+    "@zxcvbn-ts/language-en": "4.1.2"
   },
-  "devDependencies": { "typescript": "5.9.3", "vitest": "4.0.8" }
+  "devDependencies": { "typescript": "5.9.3", "vitest": "4.1.12" }
 }

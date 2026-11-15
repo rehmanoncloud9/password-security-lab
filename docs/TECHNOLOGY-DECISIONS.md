@@ -1,11 +1,12 @@
 # Technology Decisions
 
-**Status:** Current decisions as of 2026-11-15. GitHub workflow files now exist but have not run; npm install and TypeScript build remain blocked locally.
+**Status:** Current decisions as of 2026-11-15. The genuine npm lockfile resolves patched Vite 7.3.8 and Vitest/`@vitest/mocker` 4.1.12; two registry-backed `npm ci --ignore-scripts` installs and a live zero-finding npm audit pass. TypeScript typechecks pass. Normal npm lifecycle execution, Vite/Vitest execution and GitHub workflows remain blocked or unrun.
 
 ## Runtime and repository
 
 - Use a single npm workspace with `packages/core` for reusable framework-independent TypeScript and `apps/web` for React/Vite. Keep the Python API separately installable under `apps/lab-api` with exact runtime/test requirement pins; transitive artifact hashes remain absent.
 - Target Node.js 24/npm 11 and Python 3.10–3.12. CI matrices Python 3.10, 3.11, and 3.12; workflows are configured but have not executed.
+- TypeScript project references make the core declaration build an explicit prerequisite for web and SDK typechecks. Build-mode checks from a clean generated-output state pass all three workspaces.
 - TypeScript core exposes analysis, policy, reuse, and browser-secure generation functions. It has no React, persistence, network, Python, hashing-lab, or attack imports. The generator uses Web Crypto and returns the generated value to its caller; callers must avoid persistence.
 - FastAPI listens on `127.0.0.1` only, with a fixed UI origin, request models that reject extra fields, bounded payloads, and no request-body logging.
 
@@ -47,6 +48,11 @@ Deferred until P0 is demonstrated. If added, implement a dedicated explicit-opt-
 - [zxcvbn-ts project and documentation](https://github.com/zxcvbn-ts/zxcvbn), [TypeScript API](https://zxcvbn-ts.github.io/zxcvbn/guide/typescript/), [matcher documentation](https://zxcvbn-ts.github.io/zxcvbn/guide/matcher/): typed output and supported built-in patterns.
 - [argon2-cffi parameter guidance](https://github.com/hynek/argon2-cffi/blob/main/docs/parameters.md): measure parameters on the target machine; use Argon2id for password hashing and store encoded parameters with verifier.
 
-Current TypeScript package compatibility and transitive dependency contents are not
-verified because registry resolution is blocked. The root has no npm lockfile. This
-does not imply package publication or release readiness.
+The installed workspace dependency tree is consistent according to `npm ls
+--depth=0`; two registry-backed `npm ci --ignore-scripts` runs each installed 104
+packages and kept lock SHA-256
+`8E4198A7DACE9E3366A9252D058EE06BFB89E4E77074C159A74A36B14789F91A`. A live npm
+audit reports zero vulnerabilities after Vite/Vitest remediation. Normal lifecycle
+execution, core Vitest, Vite build/dev, clean Python install/audit, browser acceptance
+and GitHub workflows remain unverified; the lockfile and successful typecheck do not
+imply release readiness.

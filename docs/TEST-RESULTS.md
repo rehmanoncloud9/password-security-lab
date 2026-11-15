@@ -1,95 +1,65 @@
-# Test Results
+# Test Results — Acceptance Remediation
 
-Results below are only for commands actually executed in this workspace. A Python
-pass does not verify the unbuilt TypeScript, web, or browser application.
+**Date:** 2026-11-15
+**Status:** PARTIAL — several core checks are blocked before execution by the managed Windows process policy.
 
-## Latest checks — 2026-11-15
+## Environment
 
-| Check | Command and working directory | Result |
+- Node.js 24.14.1; npm 11.12.1.
+- Python 3.10.11.
+- npm lock SHA-256: `8E4198A7DACE9E3366A9252D058EE06BFB89E4E77074C159A74A36B14789F91A`.
+- Resolved web toolchain: Vite 7.3.8, Vitest 4.1.12, `@vitest/mocker` 4.1.12, `@vitejs/plugin-react` 5.1.1.
+
+## Executed checks
+
+| Check | Result | Evidence |
 |---|---|---|
-| Python behavior/API suite | `python -m pytest -q` in `apps/lab-api/` | **PASSED: 49 tests in 38.22 seconds** (latest run, 2026-11-15) |
-| Python lint | `ruff check apps/lab-api/app apps/lab-api/tests` from root | **PASSED** |
-| Python formatting | `ruff format --check apps/lab-api/app apps/lab-api/tests` from root | **PASSED: 10 files already formatted** |
-| Frontend/core boundary and color-token checks | `npm run lint` from root | **PASSED:** 7 core/14 web files scanned; semantic contrast tokens meet the 4.5:1 check in light and dark themes |
-| Development and contrast script syntax | `node --check scripts/dev.mjs; node --check scripts/check-contrast.mjs` | **PASSED** |
-| npm installation | `npm install --ignore-scripts --no-audit --no-fund` from root | **FAILED: ENOTCACHED**; `NPM_CONFIG_OFFLINE=true` is provided by environment |
-| Real lockfile resolution | `npm install --package-lock-only --ignore-scripts --no-audit --no-fund` from root | **FAILED: ENOTCACHED** for `@types/react`; no lockfile was created |
-| Scoped registry connectivity check | process-scoped `npm_config_offline=false` install attempt | **FAILED: proxy at `127.0.0.1:9` refused connection**; environment/global configuration was not changed |
-| pnpm offline resolution | `pnpm install --offline --no-frozen-lockfile` from root | **FAILED: ERR_PNPM_NO_OFFLINE_META** for Vite 7.2.2 |
-| Isolated Python install | `apps/lab-api/.venv/Scripts/python.exe -m pip install --no-index --requirement apps/lab-api/requirements-test.lock` | **FAILED:** wheel for `annotated-doc==0.0.4` is not cached; venv is Git-ignored |
-| TypeScript tests/build | `npm test`, `npm run build` | **NOT RUN:** dependencies and executables unavailable |
-| TypeScript type check | `npm run typecheck` | **BLOCKED:** command ran but `tsc` was not found because dependencies are unavailable |
-| Root development startup | `npm run dev` | **BLOCKED:** launcher now builds and watches core first, but cannot load its `typescript` module until npm dependencies are installed |
-| Runtime version | `python --version`, `node --version`, `npm --version` | **PASSED:** Python 3.10.11 (supported), Node 24.14.1, npm 11.12.1 |
-| Release metadata gate | `node scripts/release-check.mjs` | **Expected release block:** manifests/changelog are consistent, but `package-lock.json` is absent |
-| Independent SDK consumer build/run | `npm run build`, `npm run start --workspace @psa/example-consumer` | **NOT RUN:** dependencies unavailable |
-| Browser integration/E2E/network canary | No runnable frontend bundle or browser harness | **NOT RUN**; CUA browser inventory returned no browser surfaces |
-| Visual/accessibility/assistive technology | No rendered UI or browser session | **NOT RUN**; reference screenshot file was absent and no browser surface was available |
-| pip-audit/npm audit/Gitleaks/CodeQL | GitHub workflow definitions added; local scanners unavailable | **NOT RUN** |
-| GitHub workflows | No Git remote is configured; no Actions run available | **NOT RUN** |
-| Workflow YAML/action pin syntax | PyYAML parse plus Node SHA reference check | **PASSED:** four YAML files parsed; 16 external action references use full 40-character SHAs |
-| Clean isolated install | No registry/cache package resolution | **BLOCKED** |
+| npm install / lock regeneration | PASSED with scripts disabled | Registry install generated the real lock; `npm ls` showed a valid tree |
+| Reproducible npm install | PASSED with limitation | Two `npm ci --ignore-scripts` runs each installed 104 packages; lock SHA stayed identical |
+| Normal `npm ci` | BLOCKED by host | Failed when npm launched a lifecycle child process: `spawn EPERM`; cleanup also returned `EPERM` |
+| Dependency tree | PASSED | `npm ls --depth=0` and `npm ls vite vitest @vitest/mocker` showed valid, patched, deduplicated versions |
+| npm audit | PASSED | Registry-backed `npm audit` reported `found 0 vulnerabilities` (exit 0) |
+| Clean-output TypeScript typecheck | PASSED | Removed core/web/SDK generated outputs and build-info files; `npm run typecheck` passed all three workspaces |
+| Core behavior | PASSED as direct runtime assertions | Compiled-core checks covered qwerty/asdfgh spatial findings, sequence, repeat, l33t, mixed dictionary/spatial findings, policy, reuse privacy, secure generation, Unicode and 256/257 code-point boundary |
+| Core Vitest | BLOCKED before assertions | Fork pool failed to spawn; thread pool failed in Vite Windows path probing. Vitest reported zero tests executed |
+| Web tests | PASSED, server-render scope only | `npm test --workspace @psa/web`: 9 React render checks passed for navigation states, themes, analysis, policy, generator/reuse, hashing unavailable state, attack caps, reports/benchmarks and theme preference storage |
+| Root `npm test` | FAILED overall due environment | Core Vitest failed before assertions; npm continued and the 9 web render checks passed |
+| Lint | PASSED | `npm run lint`: privacy/architecture boundary checks and selected 4.5:1 semantic text/action token contrast checks passed |
+| Production build | BLOCKED | `npm run build` compiled core and SDK TypeScript, then Vite 7.3.8 failed loading config because esbuild child process returned `spawn EPERM` |
+| Development startup | BLOCKED | `npm run dev` built/watched core with zero TypeScript errors, then Vite config loading failed with esbuild `spawn EPERM`; frontend did not start |
+| SDK consumer | PASSED | `node examples/sdk-consumer/dist/index.js` printed real analysis, policy and reuse results |
+| Python API tests | PASSED in existing Python environment | From `apps/lab-api`: `python -m pytest -q tests` — 49 passed in 38.14s |
+| Python API tests from repository root | FAILED invocation only | Running with root cwd failed collection (`ModuleNotFoundError: app`); documented package-root command above passed |
+| Clean Python installation | BLOCKED | `PIP_NO_INDEX=1` initially disabled index access. After removing it, direct PyPI install failed TLS issuer verification; Windows HTTP request also closed unexpectedly. No clean venv install was claimed |
+| Live loopback API | PASSED in earlier run this pass | `/lab/health` returned `status=ok`; health fields reflected actual host/API state |
+| Live crypto API | PASSED in earlier run this pass | SHA-256, PBKDF2-HMAC-SHA256, bcrypt and Argon2id: actual hash, correct verify, incorrect verify, and verifier deletion |
+| Python security audit | NOT RUN | `pip-audit` unavailable; its isolated installation was blocked by PyPI TLS/index restrictions |
+| Gitleaks / CodeQL | NOT RUN | Executables and authenticated workflow execution unavailable |
+| GitHub Actions | NOT RUN | Workflow YAML/configuration is not presented as a workflow pass |
+| Browser, E2E, screenshots and accessibility | NOT RUN | No browser surface was available; Vite could not start; no screenshot files were fabricated |
 
-## Python test coverage exercised
+## Commands to repeat on a process-capable environment
 
-The 49 tests execute real algorithm and API behavior across SHA-256, PBKDF2-HMAC-
-SHA256, bcrypt, and Argon2id; successful and unsuccessful verification; random salt
-behavior; bcrypt byte-boundary rejection; invalid cost and malformed verifier
-handling; dictionary/brute-force/pattern/suffix/substitution/word-combination
-recovery; deterministic candidate ordering; search-space math; measured
-candidate-verification time and throughput; cancellation, attempt/time limits,
-concurrency, worker failure, cleanup, and bounded state stores; strict request,
-body, host, origin and Unicode validation; secret-safe errors; and real benchmark
-result schema/content.
-
-## Fresh loopback API evidence
-
-Started `python -m app.main` from `apps/lab-api/` and called the loopback API with
-PowerShell `Invoke-RestMethod`. `GET /lab/health` returned `status=ok`, measured
-process/host fields, and zero active jobs/verifiers. With a synthetic sample,
-`POST /lab/hash`, correct and incorrect `POST /lab/verify`, and `DELETE /lab/hash/{id}`
-were run for all four algorithms; every correct value matched, every different
-value failed, and all four verifier records were cleared.
-
-| Live synthetic attack strategy | Terminal state | Attempts / search space | Elapsed ms |
-|---|---|---:|---:|
-| Dictionary | recovered | 1 / 4 | 0.442 |
-| Brute force | recovered | 5 / 6 | 0.789 |
-| Pattern/date | recovered | 4 / 5 | 0.460 |
-| Predictable suffix | recovered | 5 / 5 | 0.610 |
-| Substitution | recovered | 4 / 4 | 0.833 |
-| Word combination | recovered | 2 / 49 | 0.712 |
-
-An Argon2id dictionary job was cancelled; its final state was `cancelled`, with zero
-candidate attempts and stop reason `cancelled`. `POST /lab/benchmark` then ran the
-real one-warm-up/five-repetition workload. The new raw artifact is
-[`2026-11-15-acceptance-loopback.json`](../artifacts/benchmarks/2026-11-15-acceptance-loopback.json);
-the earlier capture remains preserved at
-[`2026-11-15-windows-local.json`](../artifacts/benchmarks/2026-11-15-windows-local.json).
-These are API results, not a browser run; JavaScript analysis, UI navigation, exports,
-theme persistence, search, and rendered responsive behavior remain unverified.
-
-## Local commands after restoring dependency availability
-
-JavaScript, from the root:
+From the repository root:
 
 ```powershell
-npm install
+npm ci
 npm run lint
 npm run typecheck
 npm test
 npm run build
-npm run start --workspace @psa/example-consumer
+node examples/sdk-consumer/dist/index.js
+npm audit
 ```
 
-Python, from `apps/lab-api/`:
+From `apps/lab-api/` with a trusted Python package index and a fresh venv:
 
 ```powershell
 python -m pip install -r requirements-test.lock
 ruff format --check app tests
 ruff check app tests
-python -m pytest -q
+python -m pytest -q tests
+pip-audit --requirement requirements-test.lock
 ```
 
-Do not mark these JavaScript, browser, scan, or clean-install checks passed until
-the commands are run and the resulting behaviors are inspected.
+Run and inspect the real application in Chromium before release; see [UI Verification](UI-VERIFICATION.md).

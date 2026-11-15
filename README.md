@@ -11,9 +11,12 @@ only. This is not a credential checker or production authentication service.
 
 This workspace contains substantial implementation, but it is **not a verified
 release**. The Python API, cryptographic operations, and bounded attack logic pass
-their current automated suite. TypeScript/React/SDK source and tests are present but
-could not be compiled or run here because npm cannot reach the configured proxy and
-has no cached packages. Browser, visual, and accessibility behavior remain unverified.
+49 tests in the current Python environment. Clean-output TypeScript checks, direct
+core behavior checks, nine web server-render checks and the SDK consumer pass. The
+live npm audit reports zero vulnerabilities. Normal npm lifecycle processes,
+Vitest, and Vite/esbuild fail with `spawn EPERM` in this managed Windows sandbox.
+Browser, visual, accessibility and actual GitHub Actions behavior remain
+unverified.
 See [Implementation Status](IMPLEMENTATION-STATUS.md), [Test Results](docs/TEST-RESULTS.md),
 and [Known Limitations](docs/KNOWN-LIMITATIONS.md).
 
@@ -40,19 +43,20 @@ benchmark or attack output is used.
 - Node.js 24.14.1 and npm 11 (workspace metadata requires Node 24 and npm 11).
 - Python 3.10–3.12.
 - Local ports 5173 and 8000 available.
-- Package registry access for JavaScript packages. The repository does not yet
-  contain `package-lock.json`; a reviewed lock is a release blocker.
+- npm registry access for package installation. A genuine root `package-lock.json`
+  is present in this workspace; it has not been committed.
 
 Python runtime/test versions are pinned in `apps/lab-api/requirements.lock` and
-`requirements-test.lock`; artifact hashes are not recorded. These files have not
-been clean-installed in this environment.
+`requirements-test.lock`; artifact hashes are not recorded. A clean Python install
+could not be verified because this environment sets `PIP_NO_INDEX=1` and PyPI TLS
+verification failed when that setting was removed.
 
 ## Run locally
 
-From the repository root, install the workspace and start the React UI:
+From the repository root, install the locked workspace and start the React UI:
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
@@ -82,11 +86,12 @@ The API starts on `http://127.0.0.1:8000`; the Vite development server uses
 `http://127.0.0.1:5173`. Local API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
-**Important:** npm installation did not complete in the supplied environment.
-`NPM_CONFIG_OFFLINE=true` is inherited from the environment, and a process-scoped
-online attempt reached a proxy at `127.0.0.1:9` that refused the connection. Do not
-assume the frontend commands have been verified here. Run them in a normal
-registry-enabled developer or CI environment.
+**Environment limit:** Two registry-backed `npm ci --ignore-scripts` runs installed
+104 packages each and preserved the lock hash. Plain `npm ci` fails here when npm
+starts a lifecycle child process (`spawn EPERM`); Vite/esbuild and Vitest workers
+also fail to spawn. The live npm audit was run against the registry and found zero
+vulnerabilities. Run normal install/build/browser workflows in a process-capable
+environment before release.
 
 ## Checks
 
@@ -100,12 +105,12 @@ npm run build
 npm run start --workspace @psa/example-consumer
 ```
 
-From the repository root for Python checks:
+From `apps/lab-api/` for Python checks:
 
 ```powershell
-apps/lab-api/.venv/Scripts/python.exe -m ruff format --check apps/lab-api/app apps/lab-api/tests
-apps/lab-api/.venv/Scripts/python.exe -m ruff check apps/lab-api/app apps/lab-api/tests
-apps/lab-api/.venv/Scripts/python.exe -m pytest -q apps/lab-api/tests
+.\.venv\Scripts\python.exe -m ruff format --check app tests
+.\.venv\Scripts\python.exe -m ruff check app tests
+.\.venv\Scripts\python.exe -m pytest -q tests
 ```
 
 Current run evidence is in [Test Results](docs/TEST-RESULTS.md). CI definitions

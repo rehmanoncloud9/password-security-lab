@@ -1,7 +1,14 @@
 # ADR-010: Do Not Fabricate Dependency Lock Metadata
 
-- **Status:** Accepted with an open external blocker
+- **Status:** Superseded by registry-enabled remediation (ADR-012)
 - **Date:** 2026-11-15
+
+## Supersession note
+
+This decision records the earlier restricted environment accurately. A subsequent
+registry-enabled remediation generated and verified a genuine root `package-lock.json`.
+The original decision below remains as historical context; the current dependency
+state and audit evidence are recorded in ADR-012 and the final engineering report.
 
 ## Context
 
