@@ -1,0 +1,145 @@
+{
+  "kind": "local-measurement",
+  "method": "One unreported warm-up generation and verification, followed by five measured generations and correct-password verifications per algorithm; perf_counter_ns.",
+  "limitations": [
+    "Single run on this machine; results vary with load, thermal state, runtime, and library versions.",
+    "The synthetic workload is for comparison only and is not a universal attacker rate.",
+    "No extrapolated attack totals are reported."
+  ],
+  "environment": {
+    "os": "Windows 10",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "logicalCpus": 12,
+    "totalMemoryBytes": 8259321856,
+    "availableMemoryBytes": 541126656,
+    "python": "3.10.11",
+    "libraries": {
+      "fastapi": "0.128.0",
+      "argon2-cffi": "25.1.0",
+      "bcrypt": "5.0.0",
+      "hashlibOpenSSL": "OpenSSL 1.1.1t  7 Feb 2023"
+    }
+  },
+  "results": [
+    {
+      "algorithm": "sha256",
+      "parameters": {},
+      "repetitions": 5,
+      "hashGenerationMs": {
+        "individual": [
+          0.002,
+          0.001,
+          0.001,
+          0.001,
+          0.001
+        ],
+        "median": 0.001,
+        "iqr": 0.0
+      },
+      "verificationMs": {
+        "individual": [
+          0.009,
+          0.009,
+          0.008,
+          0.008,
+          0.008
+        ],
+        "median": 0.008,
+        "iqr": 0.001
+      }
+    },
+    {
+      "algorithm": "pbkdf2_sha256",
+      "parameters": {
+        "iterations": 600000,
+        "saltBytes": 16,
+        "derivedBytes": 32
+      },
+      "repetitions": 5,
+      "hashGenerationMs": {
+        "individual": [
+          269.746,
+          258.495,
+          242.038,
+          255.088,
+          709.378
+        ],
+        "median": 258.495,
+        "iqr": 14.659
+      },
+      "verificationMs": {
+        "individual": [
+          245.224,
+          234.969,
+          239.511,
+          449.27,
+          660.621
+        ],
+        "median": 245.224,
+        "iqr": 209.759
+      }
+    },
+    {
+      "algorithm": "bcrypt",
+      "parameters": {
+        "cost": 10,
+        "maxInputBytes": 72
+      },
+      "repetitions": 5,
+      "hashGenerationMs": {
+        "individual": [
+          198.741,
+          203.202,
+          198.891,
+          185.253,
+          198.387
+        ],
+        "median": 198.741,
+        "iqr": 0.504
+      },
+      "verificationMs": {
+        "individual": [
+          195.989,
+          204.086,
+          210.132,
+          212.61,
+          198.899
+        ],
+        "median": 204.086,
+        "iqr": 11.233
+      }
+    },
+    {
+      "algorithm": "argon2id",
+      "parameters": {
+        "memoryKiB": 19456,
+        "iterations": 2,
+        "parallelism": 1,
+        "saltBytes": 16
+      },
+      "repetitions": 5,
+      "hashGenerationMs": {
+        "individual": [
+          113.746,
+          114.164,
+          117.853,
+          125.827,
+          115.301
+        ],
+        "median": 115.301,
+        "iqr": 3.689
+      },
+      "verificationMs": {
+        "individual": [
+          115.29,
+          113.552,
+          120.607,
+          124.076,
+          111.888
+        ],
+        "median": 115.29,
+        "iqr": 7.054
+      }
+    }
+  ]
+}

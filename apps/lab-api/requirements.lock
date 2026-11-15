@@ -1,0 +1,25 @@
+# Exact runtime dependency closure validated against apps/lab-api/pyproject.toml.
+# Hashes are absent because the restricted local package proxy prevented downloading
+# package artifact hashes. Rebuild this lock only through a reviewed registry-backed
+# resolution and update it alongside pyproject.toml.
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.12.1
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+bcrypt==5.0.0
+cffi==2.0.0
+click==8.1.8
+colorama==0.4.6
+exceptiongroup==1.3.1
+fastapi==0.128.0
+h11==0.16.0
+idna==2.10
+psutil==7.2.2
+pycparser==2.23
+pydantic==2.12.5
+pydantic-core==2.41.5
+starlette==0.50.0
+typing-extensions==4.15.0
+typing-inspection==0.4.2
+uvicorn==0.40.0

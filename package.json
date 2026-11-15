@@ -1,0 +1,14 @@
+{
+  "name": "password-security-analyzer",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/core", "apps/web", "examples/sdk-consumer"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "node scripts/lint-boundaries.mjs && node scripts/check-contrast.mjs",
+    "dev": "node scripts/dev.mjs"
+  },
+  "engines": { "node": ">=24 <25", "npm": ">=11 <12" }
+}
