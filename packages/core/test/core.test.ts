@@ -31,12 +31,26 @@ describe("pattern-aware local analysis", () => {
     expect(phrase.estimatedGuesses).toBeGreaterThan(1);
   });
 
-  it("reports repeated, sequence, keyboard, and substitution patterns", () => {
+  it("reports actual repeated, sequence, keyboard, and substitution matches", () => {
     const patterns = (sample: string) => analyzePassword(sample).findings.map((item) => item.pattern);
     expect(patterns("aaaaaaaaaaaa")).toContain("repeat");
     expect(patterns("abcdef")).toContain("sequence");
     expect(patterns("qwerty")).toContain("spatial");
+    expect(patterns("asdfgh")).toContain("spatial");
+    expect(patterns("123456")).toEqual(expect.arrayContaining(["sequence", "spatial"]));
     expect(patterns("p@ssw0rd")).toContain("l33t");
+    expect(patterns("qwerty-password")).toEqual(expect.arrayContaining(["spatial", "dictionary"]));
+    const unicode = "caf\u00e9 \u{1f408} river! green";
+    expect(analyzePassword(unicode).characterProfile.codePoints).toBe(Array.from(unicode).length);
+    expect(analyzePassword("").findings).toEqual([]);
+    expect(patterns("orchard canvas river lantern meadow amber")).toContain("dictionary");
+    expect(JSON.stringify(analyzePassword("qwerty-password"))).not.toContain("qwerty-password");
+  });
+
+  it("accepts the maximum supported length without truncating and rejects the next code point", () => {
+    const maximum = "x".repeat(256);
+    expect(analyzePassword(maximum).characterProfile.codePoints).toBe(256);
+    expect(() => analyzePassword(`${maximum}x`)).toThrow(InputLimitError);
   });
 
   it("does not silently truncate over-limit values", () => {

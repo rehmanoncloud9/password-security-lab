@@ -71,20 +71,23 @@ function StrengthPanel({ result, error }: { readonly result: AnalysisResult | nu
 export function AnalysisPage({
   password,
   onPasswordChange,
-  result,
-  error,
   visible,
   onToggleVisible,
   onClear,
 }: {
   readonly password: string;
   readonly onPasswordChange: (value: string) => void;
-  readonly result: AnalysisResult | null;
-  readonly error: string;
   readonly visible: boolean;
   readonly onToggleVisible: () => void;
   readonly onClear: () => void;
 }) {
+  const analysisState = useMemo(() => {
+    if (!password) return { result: null, error: "" };
+    try { return { result: analyzePassword(password), error: "" }; }
+    catch (cause) {
+      return { result: null, error: cause instanceof Error ? cause.message : "Analysis could not be completed." };
+    }
+  }, [password]);
   const codePoints = Array.from(password).length;
   return <>
     <PageHeading eyebrow="BROWSER-LOCAL · NO NETWORK REQUEST" title="Password Analysis" description="Inspect guessability patterns and targeted suggestions for a synthetic example. Strength and policy compliance are separate evaluations." />
@@ -100,7 +103,7 @@ export function AnalysisPage({
         <div className="input-meta"><span>{codePoints} / 256 Unicode code points</span><span id="analysis-privacy">Analysis executes locally in this browser tab.</span></div>
         <div className="privacy-callout"><ShieldCheck size={16} /><p><strong>Do not enter a password you currently use.</strong> Analysis values are never submitted to the Python laboratory or external services.</p></div>
       </section>
-      <StrengthPanel result={result} error={error} />
+      <StrengthPanel result={analysisState.result} error={analysisState.error} />
       <section className="work-card analysis-method-card">
         <div className="card-title-row"><div><span className="eyebrow">MODEL DETAILS</span><h2>How this estimate works</h2></div></div>
         <div className="method-grid"><div><strong>Pattern matching</strong><p>zxcvbn-ts weighs dictionary words, repeats, sequences, keyboard paths and common substitutions.</p></div><div><strong>Model limits</strong><p>Context outside the loaded English/common dictionaries, future breaches and private personal details are not represented.</p></div><div><strong>Separate measurements</strong><p>Hash and attack timings are actual laboratory measurements; they are shown only in their respective experiment screens.</p></div></div>
@@ -122,7 +125,6 @@ function getPolicyComparison(password: string): PolicyResult[] {
 export function PolicyPage({
   password,
   onPasswordChange,
-  result,
   policyId,
   onPolicyChange,
   onEvent,
@@ -130,7 +132,6 @@ export function PolicyPage({
 }: {
   readonly password: string;
   readonly onPasswordChange: (value: string) => void;
-  readonly result: PolicyResult | null;
   readonly policyId: PolicyId;
   readonly onPolicyChange: (value: PolicyId) => void;
   readonly onEvent: (level: LabEvent["level"], message: string) => void;
@@ -144,7 +145,7 @@ export function PolicyPage({
     }
   }, [password]);
   const comparison = comparisonState.values;
-  const selectedPolicy = result ?? comparison.find((item) => item.policyId === policyId) ?? null;
+  const selectedPolicy = comparison.find((item) => item.policyId === policyId) ?? null;
 
   function recordComparison() {
     if (!comparison.length) return;

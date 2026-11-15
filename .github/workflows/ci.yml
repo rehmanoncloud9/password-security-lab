@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, master, "codex/**"]
+    branches: ["**"]
   workflow_dispatch:
 
 permissions:
@@ -48,11 +48,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.14.1
-      # A reviewed npm lockfile cannot be produced in the supplied environment:
-      # registry access is blocked by the runner proxy. Once package-lock.json is
-      # committed, replace this with `npm ci` and enable setup-node's npm cache.
-      - name: Install npm workspaces
-        run: npm install --no-audit --no-fund
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked npm workspaces
+        run: npm ci --no-audit --no-fund
       - name: Check privacy and architecture boundaries
         run: npm run lint
       - name: Type check workspaces

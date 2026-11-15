@@ -2,31 +2,25 @@
 
 ## Workflows
 
-- `.github/workflows/ci.yml` runs Python 3.10–3.12 format/lint/tests and JavaScript
-  boundary lint, type checks, unit tests, production builds, and the SDK consumer.
-- `.github/workflows/security.yml` runs pip-audit, npm audit, Gitleaks directory
-  scanning, and CodeQL for Python and JavaScript/TypeScript.
-- `.github/workflows/release.yml` runs a no-publication preflight, version/changelog
-  checks, tests/builds and creates a short-lived workflow artifact. It does not
-  publish a package, create a public release, or deploy the API.
-- `.github/dependabot.yml` requests weekly npm, Python, and GitHub Actions updates.
+- `.github/workflows/ci.yml`: Python format/lint/tests; npm lock install; privacy lint; TypeScript typechecks/tests; production builds; SDK consumer execution.
+- `.github/workflows/security.yml`: Python `pip-audit`, npm audit, Gitleaks and CodeQL.
+- `.github/workflows/release.yml`: version/changelog/test/build preflight and short-lived workflow artifact. It does not publish a package, create a public release or deploy the API.
+- `.github/dependabot.yml`: weekly npm, Python and GitHub Actions update proposals.
 
-External GitHub Actions are referenced by immutable commit SHA. Python dependencies
-are installed from exact version files. npm installation in CI currently uses
-`npm install` because the repository has no reviewed `package-lock.json`; once a
-registry-backed lock is committed, change CI to `npm ci` and enable npm cache keyed
-by that lock. The release preflight already requires the lock and uses `npm ci`.
+GitHub Actions are pinned to immutable action revisions. The CI and security workflows use `npm ci` and the root lockfile. The current npm dependency tree audits clean locally, but no GitHub workflow has been executed; configured YAML is not a pass. In this sandbox normal npm lifecycle processes fail `spawn EPERM`, while Python registry access fails TLS verification. See [External Verification Procedure](REGISTRY-ENABLED-SETUP.md).
 
 ## Local equivalents
 
 From the repository root:
 
 ```powershell
+npm ci
 npm run lint
 npm run typecheck
 npm test
 npm run build
-npm run start --workspace @psa/example-consumer
+node examples/sdk-consumer/dist/index.js
+npm audit
 ```
 
 From `apps/lab-api/`:
@@ -35,14 +29,10 @@ From `apps/lab-api/`:
 python -m pip install -r requirements-test.lock
 ruff format --check app tests
 ruff check app tests
-python -m pytest -q
+python -m pytest -q tests
+pip-audit --requirement requirements-test.lock
 ```
 
-## Limitations
+## Limits and release use
 
-No GitHub Actions workflow was executed from this local checkout. npm currently
-resolves dynamically in regular CI, so those builds are not yet reproducible across
-time. CodeQL upload availability depends on repository code-scanning permissions.
-Scanner output must be reviewed; a workflow file is not evidence of a clean scan.
-Gitleaks requires its free `GITLEAKS_LICENSE` secret for GitHub organization
-repositories; personal-account repositories do not require that secret.
+Run workflows only with the authorized repository identity and permissions. No commit, push, publication or deployment is included in this verification pass. Review actual job logs and scanner results; a workflow file or successful YAML parse does not establish a pass. CodeQL availability depends on repository permissions. Gitleaks license requirements depend on repository ownership/account type.

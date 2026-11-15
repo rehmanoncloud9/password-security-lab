@@ -38,10 +38,7 @@ const watchHost = ts.createWatchCompilerHost(
   },
 );
 const coreWatcher = ts.createWatchProgram(watchHost);
-const webServer = await createServer({
-  configFile: path.join(root, "apps", "web", "vite.config.ts"),
-  root: path.join(root, "apps", "web"),
-});
+let webServer;
 
 let stopping = false;
 async function stop(signal) {
@@ -49,13 +46,17 @@ async function stop(signal) {
   stopping = true;
   if (signal) console.info(`\nStopping local development services (${signal}).`);
   coreWatcher.close();
-  await webServer.close();
+  if (webServer) await webServer.close();
 }
 
 process.once("SIGINT", () => void stop("SIGINT"));
 process.once("SIGTERM", () => void stop("SIGTERM"));
 
 try {
+  webServer = await createServer({
+    configFile: path.join(root, "apps", "web", "vite.config.ts"),
+    root: path.join(root, "apps", "web"),
+  });
   await webServer.listen();
   webServer.printUrls();
 } catch (error) {

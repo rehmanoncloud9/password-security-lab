@@ -6,6 +6,19 @@
 
 The measurement records Windows version, CPU string, logical CPU count, total and currently available memory, Python runtime, cryptographic/library implementation versions, and OpenSSL version. Each local run is one sample on one machine; no fixed benchmark values are embedded in application code.
 
+## Interpretation limits
+
+Five observations per algorithm provide a compact classroom comparison, not a
+statistically stable performance estimate. The inclusive quartiles are sensitive to
+the small sample size; the reported 0.001 ms rounding can be material for very fast
+SHA-256 calls. The run is sequential and does not control background load, power or
+thermal state, CPU frequency, or competing processes. Verification measures only a
+correct-password path. Memory fields are whole-machine snapshots, not per-operation
+peak or incremental KDF memory. The local benchmark endpoint does not report attack
+candidate throughput; attack experiments report their own actual counts and elapsed
+time. Avoid extrapolating either result to attacker hardware or comparing them as a
+universal ranking.
+
 ## Attack experiments
 
 Attempt counts increment only after a real candidate verification. Elapsed time is measured around internal target creation and candidate work. The result records the actual search-space size for brute force and the exact terminal reason. A stop at the timer/attempt ceiling is inconclusive. No extrapolated attack totals are presented.

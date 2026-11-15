@@ -19,8 +19,12 @@ __pycache__/
 *.log
 *.tmp
 *.swp
+*.tsbuildinfo
+audit-report.json
+.test-build/
 .DS_Store
 Thumbs.db
+artifacts/releases/*.zip
 apps/lab-api/.coverage
 apps/lab-api/htmlcov/
 Password_Security_Analyzer_Technical_Plan.pdf

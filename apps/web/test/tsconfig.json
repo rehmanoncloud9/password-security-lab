@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../src",
+    "outDir": "../.test-build",
+    "composite": true,
+    "noEmit": false,
+    "noEmitOnError": true
+  },
+  "include": ["../src/**/*.ts", "../src/**/*.tsx"],
+  "references": [{ "path": "../../../packages/core" }]
+}

@@ -1,5 +1,34 @@
 # Requirement Reconciliation
 
+## Current acceptance evidence — 2026-11-15
+
+Registry access succeeded after removing the inherited proxy variables for the npm
+process and using a writable temporary cache. The genuine root `package-lock.json`
+now resolves Vite 7.3.8 and Vitest/`@vitest/mocker` 4.1.12; the live npm audit reports
+zero vulnerabilities. Two `npm ci --ignore-scripts` runs installed 104 packages each
+with an unchanged lock hash. Normal npm lifecycle execution still fails with host
+`spawn EPERM`.
+
+Python 3.10.11 tests passed (49 tests). The clean Python install is not verified:
+`PIP_NO_INDEX=1` was inherited, and after removing it, PyPI TLS issuer verification
+failed. Clean-output TypeScript checks and nine web server-render checks passed.
+Core Vitest/Vite execution, browser screenshots/privacy/accessibility, Python
+dependency/security scans and GitHub Actions remain blocked or unrun.
+
+The following earlier acceptance note and reconciliation rows describe the initial
+audit snapshot only; use this section and [Implementation Status](../IMPLEMENTATION-STATUS.md)
+for the latest result.
+
+## Initial acceptance evidence snapshot — 2026-11-15
+
+The historical rows below record the dependency state during the earlier audit.
+Since then, the owner supplied a genuine root `package-lock.json`; it is present in
+the workspace and remained unchanged across two cached `npm ci --ignore-scripts`
+installs. Plain `npm ci` now fails in this managed Windows environment with
+`spawn EPERM` while invoking package lifecycle scripts. The online audit endpoint
+also remains unreachable. Therefore the previous “lock missing” state is historical,
+but reproducible normal installation and patched dependency status are still open.
+
 **Authority:** the supplied `00-MASTER-PRD.md` is the product baseline. The supplied architecture, security/privacy, threat model, testing, roadmap, API, governance, and decision-log documents support it. The 2026-10-25 CS-353 Technical Plan preserves course context. The implementation prompt adds explicit release-scope and milestone requirements and controls where it is more specific.
 
 ## Identified conflicts and interpretation
@@ -43,4 +72,4 @@
 | Notifications/profile/session | Top navigation asks for notifications/profile only where supported; current product has no accounts or notification service. | Show a truthful local-session marker and omit an inert notification bell; search and settings must be functional. | No invented identity or unsupported notification state. | No. |
 | Git setup and publication | Initial workspace has no Git metadata. Earlier instruction prohibits commits/pushes without explicit authorization; new prompt asks for workflows, gitignore and Git-related setup. | Initialize a local repository on a dedicated work branch after the audit; add Git metadata files and workflows, but do not commit, push, publish, or deploy. | New instruction authorizes local Git setup and workflow work; it does not authorize transmitting or committing user files. | No. |
 | npm offline configuration | Environment supplies `NPM_CONFIG_OFFLINE=true`; registry points to the official npm registry, package versions are not all cached, and proxy variables point to unavailable `127.0.0.1:9`. pnpm also lacks Vite metadata. | Attempt installation with a process-only `npm_config_offline=false` override; leave environment/global npm configuration unchanged. The attempt failed with `ECONNREFUSED 127.0.0.1:9`; preserve exact lock status and proceed with independent work. | Root cause includes environment offline mode and a blocked proxy endpoint; this is not justification to change package versions or bypass the network boundary. | External package access remains blocked. |
-| CI lockfile requirement | New prompt requires deterministic installs and CI; repository has no JS lock and Python pins do not contain hashes. | Add regular CI checks that resolve dependencies on a network-enabled runner, clearly mark npm resolution as non-reproducible until a lock is committed, and make the release preflight require `package-lock.json` with `npm ci`. Do not hand-author lock metadata. | Provides useful engineering checks without claiming repeatable resolution; retains a hard release gate for the absent lock. | Registry-backed lock generation and hash review remain blocked by this environment. |
+| CI lockfile requirement | New prompt requires deterministic installs and CI; repository has no JS lock and Python pins do not contain hashes. | CI and security workflows now use `npm ci` with setup-node caching keyed by `package-lock.json`; release already requires `npm ci`. The registry-enabled setup runbook describes genuine lock generation and clean verification. Do not hand-author lock metadata. | Workflows fail closed until the reviewed npm lock is committed; local checkout cannot finish setup because the registry proxy refuses connections. Python hash pinning remains a separate improvement. | `npm ci` returned `EUSAGE` without a lock; npm registry probe returned `ECONNREFUSED` through `127.0.0.1:9`; GitHub workflows not run because local `gh` tokens are invalid. |

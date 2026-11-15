@@ -27,4 +27,5 @@ health endpoint. Do not add Docker Compose without a concrete tested need.
 - CPU/memory/experiment values reflect actual host/API data or display unavailable.
 - The source layout follows the written reference, but exact screenshot comparison
   and browser visual/accessibility testing are still required.
-- JavaScript lock/build verification remains blocked by the local registry proxy.
+- The npm lock and live audit are now verified; Vite's build/server remain blocked
+  in this managed Windows sandbox by child-process `spawn EPERM`.

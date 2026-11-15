@@ -1,35 +1,25 @@
 # Privacy Verification
 
-## Data flows reviewed
+## Data paths and evidence
 
-| Data | Intended handling | Evidence/status |
+| Data | Intended handling | Current evidence/status |
 |---|---|---|
-| Analyzer input | Passed to TypeScript core locally; absent from result shape | Source boundary lint passed; browser network canary NOT RUN |
-| Policy/reuse samples | Evaluated locally/in memory and cleared by reset/session cleanup | Source inspection only; no browser lifecycle run |
-| Generated password | Produced locally with Web Crypto; returned to caller for immediate display/copy | Generator test source exists; tests/browser clipboard journey NOT RUN |
-| Theme choice | `psl-theme` only in local storage | Preferences source reviewed and boundary lint passed; browser storage inspection NOT RUN |
-| Hashing lab input | Explicitly submitted to fixed loopback API on user action; not returned in result/history | Python API tests cover secret-safe validation; browser network/console inspection NOT RUN |
-| Attack targets | Fixed target ID sent; target secret remains internal to API | API schema/tests restrict choices; no arbitrary credential/hash import route exists |
-| Benchmark and report | Actual measurement fields and safe result summaries only | Python measurement tests pass; browser export inspection NOT RUN |
+| Analysis input | Local TypeScript core; omitted from result | Direct core assertion confirmed serialized output omits sample. Boundary lint passes. Browser network canary NOT RUN. |
+| Policy/reuse samples | Local in-memory calculation, reset on screen lifecycle | Direct core checks and React SSR render passed. Browser clearing/lifecycle not inspected. |
+| Generated value | Browser Web Crypto, shown in page memory on request | Core generator behavior passed; UI initial state rendered. Browser generation/copy/storage inspection NOT RUN. |
+| Theme setting | Only `psl-theme` in local storage | Preference helper tested with a storage fixture. Actual browser storage not inspected. |
+| Hash value | Explicit submission to loopback API only from hashing controls | Live API tests with synthetic values passed; response/history excluded plaintext. Browser request/log inspection NOT RUN. |
+| Attack target | Fixed internal synthetic target ID | Python API suite verifies allowlists and boundaries; no imported hashes or external target API. |
+| Benchmark/report output | Measured values and allowlisted result summaries | Python measurement tests passed; browser JSON/CSV exports were not downloaded or inspected. |
 
 ## Verification performed
 
-- `npm run lint` passed and inspected seven core and fourteen web source files for
-  network/persistence boundary rules. It permits local storage only in the theme
-  preference helper and verifies the designated theme key.
-- Python API tests exercise body size, strict fields, disallowed Host/Origin, and
-  sanitized validation response behavior. The route launcher disables access-body
-  logging; the app has no analytics or telemetry service.
-- Python API suite passed 49 behavior tests (latest run: 2026-11-15, 38.22 seconds).
+- `npm run lint` passed; it checks that the core has no network/storage/logging path and constrains web API calls to the fixed loopback origin.
+- Direct compiled-core checks passed for secret-free result serialization, mixed findings, Unicode, and boundaries.
+- The Python API suite passed 49 tests, covering strict schemas, body limits, Host/Origin checks, sanitized validation errors, hashing and attack boundaries.
+- A live loopback health request and correct/wrong verification for all four algorithms passed. Each verifier record was deleted after use.
+- Nine web tests rendered actual React components with synthetic inputs. These tests do not run browser effects or network panels.
 
 ## Not verified
 
-No browser runtime was available because npm packages could not be installed. Thus
-we did not capture network traffic while entering a synthetic analyzer value; inspect
-console output, URLs, local/session storage, clipboard behavior, or exported files in
-a rendered app. No live web-server proxy configuration or extension interference
-was tested. Do not report browser privacy acceptance as complete until these checks
-are run.
-
-The test procedure and evidence status are listed in [UI Verification](UI-VERIFICATION.md)
-and [Test Results](TEST-RESULTS.md).
+No browser surface was available. Therefore this pass did not inspect network requests while typing an analysis value, browser console/URLs, local/session storage, clipboard behavior, report downloads, external requests, or real theme persistence. No screenshot or browser privacy acceptance is claimed. Repeat the procedure in [UI Verification](UI-VERIFICATION.md) after Vite starts in a browser-enabled environment.

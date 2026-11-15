@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { analyzePassword, evaluatePolicy, type PolicyId } from "@psa/core";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import type { PolicyId } from "@psa/core";
 import { AppShell } from "./components/AppShell.js";
 import { BottomPanels, OperationsRail } from "./components/OperationalPanels.js";
-import { AnalysisPage, GeneratorPage, PolicyPage, ReusePage } from "./features/AnalysisLaboratory.js";
-import { AttackPage } from "./features/AttackPage.js";
-import { BenchmarksPage, ReportsPage } from "./features/BenchmarkReports.js";
-import { HashingPage } from "./features/HashingPage.js";
+const AnalysisPage = lazy(async () => ({ default: (await import("./features/AnalysisLaboratory.js")).AnalysisPage }));
+const GeneratorPage = lazy(async () => ({ default: (await import("./features/AnalysisLaboratory.js")).GeneratorPage }));
+const PolicyPage = lazy(async () => ({ default: (await import("./features/AnalysisLaboratory.js")).PolicyPage }));
+const ReusePage = lazy(async () => ({ default: (await import("./features/AnalysisLaboratory.js")).ReusePage }));
+const AttackPage = lazy(async () => ({ default: (await import("./features/AttackPage.js")).AttackPage }));
+const BenchmarksPage = lazy(async () => ({ default: (await import("./features/BenchmarkReports.js")).BenchmarksPage }));
+const ReportsPage = lazy(async () => ({ default: (await import("./features/BenchmarkReports.js")).ReportsPage }));
+const HashingPage = lazy(async () => ({ default: (await import("./features/HashingPage.js")).HashingPage }));
 import { LearningPage, OverviewPage, TopologyPage } from "./features/OverviewTopologyLearning.js";
 import { readThemePreference, saveThemePreference } from "./theme/preferences.js";
 import type { Theme } from "./theme/preferences.js";
@@ -142,24 +146,6 @@ export function App() {
       window.clearTimeout(timer);
     };
   }, [addEvent]);
-
-  const analysisState = useMemo(() => {
-    if (!password) return { result: null, error: "" };
-    try {
-      return { result: analyzePassword(password), error: "" };
-    } catch (cause) {
-      return { result: null, error: cause instanceof Error ? cause.message : "Analysis could not be completed." };
-    }
-  }, [password]);
-
-  const policyState = useMemo(() => {
-    if (!password) return { result: null, error: "" };
-    try {
-      return { result: evaluatePolicy(password, policyId), error: "" };
-    } catch (cause) {
-      return { result: null, error: cause instanceof Error ? cause.message : "Policy evaluation could not be completed." };
-    }
-  }, [password, policyId]);
 
   const recordAttack = useCallback((current: AttackJob) => {
     if (recordedJob.current === current.jobId) return;
@@ -391,9 +377,9 @@ export function App() {
       case "topology":
         return <TopologyPage api={api} job={job} results={results} onNavigate={navigate} />;
       case "analysis":
-        return <AnalysisPage password={password} onPasswordChange={setPassword} result={analysisState.result} error={analysisState.error} visible={analysisVisible} onToggleVisible={() => setAnalysisVisible((value) => !value)} onClear={() => { setPassword(""); setAnalysisVisible(false); }} />;
+        return <AnalysisPage password={password} onPasswordChange={setPassword} visible={analysisVisible} onToggleVisible={() => setAnalysisVisible((value) => !value)} onClear={() => { setPassword(""); setAnalysisVisible(false); }} />;
       case "policy":
-        return <PolicyPage password={password} onPasswordChange={setPassword} result={policyState.result} policyId={policyId} onPolicyChange={setPolicyId} onEvent={addEvent} onSafeResult={addSafeResult} />;
+        return <PolicyPage password={password} onPasswordChange={setPassword} policyId={policyId} onPolicyChange={setPolicyId} onEvent={addEvent} onSafeResult={addSafeResult} />;
       case "reuse":
         return <ReusePage onEvent={addEvent} onSafeResult={addSafeResult} />;
       case "generator":
@@ -420,5 +406,9 @@ export function App() {
     apiError={apiError}
     rightPanel={<OperationsRail api={api} apiError={apiError} job={job} onNavigate={navigate} />}
     bottomPanels={<BottomPanels api={api} apiError={apiError} job={job} events={events} onClearEvents={clearEvents} onNavigate={navigate} onRunBenchmark={() => void runQuickBenchmark()} />}
-  >{pageContent}</AppShell>;
+  >
+    <Suspense fallback={<div className="loading-state" role="status">Loading laboratory module…</div>}>
+      {pageContent}
+    </Suspense>
+  </AppShell>;
 }
