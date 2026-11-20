@@ -87,7 +87,7 @@ def _hash_password(
             raise ValueError("PBKDF2 iterations must be between 600000 and 1200000")
         salt = secrets.token_bytes(SALT_BYTES)
         derived = hashlib.pbkdf2_hmac("sha256", password_bytes, salt, iterations, 32)
-        encoded = f"$psa$pbkdf2-sha256$i={iterations}${_b64(salt)}${_b64(derived)}"
+        encoded = f"$psa$v1$pbkdf2-sha256$i={iterations}${_b64(salt)}${_b64(derived)}"
         params = {"iterations": iterations, "saltBytes": SALT_BYTES, "derivedBytes": 32}
         salt_display = _b64(salt)
     elif algorithm == "bcrypt":
@@ -160,12 +160,16 @@ def _verify_password(password: str, algorithm: str, encoded: str) -> bool:
             return hmac.compare_digest(actual, encoded)
         if algorithm == "pbkdf2_sha256":
             parts = encoded.split("$")
-            if len(parts) != 6 or parts[1:3] != ["psa", "pbkdf2-sha256"]:
+            if len(parts) == 6 and parts[1:3] == ["psa", "pbkdf2-sha256"]:
+                iter_part, salt_part, derived_part = parts[3], parts[4], parts[5]
+            elif len(parts) == 7 and parts[1:4] == ["psa", "v1", "pbkdf2-sha256"]:
+                iter_part, salt_part, derived_part = parts[4], parts[5], parts[6]
+            else:
                 raise ValueError("Malformed PBKDF2 verifier")
-            iterations = int(parts[3].removeprefix("i="))
+            iterations = int(iter_part.removeprefix("i="))
             if not PBKDF2_ITERATIONS <= iterations <= 1_200_000:
                 raise ValueError("PBKDF2 cost is outside the allowed range")
-            salt, expected = _unb64(parts[4]), _unb64(parts[5])
+            salt, expected = _unb64(salt_part), _unb64(derived_part)
             if not 16 <= len(salt) <= 32 or len(expected) != 32:
                 raise ValueError("Malformed PBKDF2 verifier")
             actual = hashlib.pbkdf2_hmac("sha256", password_bytes, salt, iterations, 32)
