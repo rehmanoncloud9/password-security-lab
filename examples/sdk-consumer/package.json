@@ -9,5 +9,5 @@
     "start": "node dist/index.js"
   },
   "dependencies": { "@psa/core": "0.1.0" },
-  "devDependencies": { "typescript": "5.9.3" }
+  "devDependencies": { "typescript": "7.0.2" }
 }
