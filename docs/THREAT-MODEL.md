@@ -1,43 +1,64 @@
 # Threat Model
 
-## Scope and assumptions
+## Scope and Assumptions
 
-This model covers the local browser app, framework-independent TypeScript core, and separate loopback Python lab. It assumes the user runs the development UI and API on the same machine and uses only synthetic examples. It does not cover compromised operating systems, malicious browser extensions, public deployment, account databases, or production authentication systems.
+This model covers the local browser application, framework-independent TypeScript core (`@psa/core`), and separate loopback Python research laboratory (`apps/lab-api`). It assumes the user runs the application locally on their machine.
+
+The application has two distinct trust domains:
+1. **Personal Password Tools:** Processes real user passwords exclusively in ephemeral browser memory. It never makes network calls, writes to persistent browser storage, calls the Python API, or logs credentials.
+2. **Research Lab:** Operates solely on server-owned or fixed synthetic fixtures and experiments. It never accepts, stores, or processes real user passwords, imported credential verifiers, or external targets.
 
 ## Assets
 
-- Analyzer input and transient analysis results in browser memory.
-- Synthetic plaintext values submitted intentionally to the local storage lab.
-- Generated verifiers, salts, benchmark output, and short-lived job records.
-- Local machine availability and integrity of installed dependencies.
+- User-entered personal passwords and ephemeral analysis results in local browser memory.
+- Generated password material produced via Web Crypto CSPRNG in browser memory.
+- Research Lab synthetic fixtures, synthetic attack targets, and benchmark measurements.
+- Local host process availability, CPU/memory resources, and installed package integrity.
 
-## Trust boundaries
+## Trust Boundaries & Architecture
 
 ```mermaid
-flowchart LR
-  USER[User] --> BROWSER[Browser tab]
-  BROWSER --> CORE[Local TypeScript core]
-  BROWSER -->|explicit loopback lab request| API[127.0.0.1 FastAPI]
-  API --> MEM[Bounded process memory]
-  API --> KDF[Established crypto libraries]
-  API --> JOB[Single bounded synthetic job]
+flowchart TD
+    subgraph BrowserDomain["Local Browser Process (Personal Password Tools)"]
+        USER["User Input (Password / Options)"] --> BROWSER["Browser Tab UI"]
+        BROWSER --> CORE["@psa/core (TypeScript)"]
+        CORE --> CRYPTO_RANDOM["Web Crypto (CSPRNG)"]
+        CORE --> ZXCVBN["zxcvbn-ts (In-Memory Estimator)"]
+        CORE --> POLICIES["Policy Engine (NIST SP 800-63B-4)"]
+        CORE --> REUSE["In-Memory Reuse Analyzer"]
+        CORE --> BLOCKLIST["Local Bundled Blocklist"]
+        BROWSER -.->|Explicit opt-in consented range check only| HIBP["Optional HIBP Range API (k-anonymity 5-hex prefix)"]
+    end
+
+    subgraph LabDomain["Separate Local Lab (Loopback API 127.0.0.1:8000)"]
+        LAB_UI["Research Lab UI"] -->|Loopback JSON requests| API["FastAPI Service (127.0.0.1)"]
+        API --> FIXTURES["Server-Owned Synthetic Fixtures (No Real Credentials)"]
+        API --> KDF["Bounded KDF Engines (Argon2id, bcrypt, PBKDF2, SHA-256)"]
+        API --> ATTACK["Bounded Attack Engine (Synthetic Targets Only)"]
+        API --> BENCH["Benchmark & Statistics Engine"]
+    end
+
+    classDef restricted fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    classDef safe fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
 ```
 
-The analysis core has no network or persistence dependency. The lab is a separate boundary: explicit storage actions send synthetic values to the local service. Attack requests identify only fixed internal targets; callers cannot submit target plaintext, imported verifiers, wordlists, filesystem paths, or remote hosts.
+**Architectural Invariant:** Personal Password Tools and the Research Lab are strictly decoupled. The Personal Password Tools have zero dependency on the Python API, and real passwords can never enter the Python API or network requests.
 
-## Threats and controls
+## Threats and Controls
 
-| Threat | Impact | Controls in source | Remaining verification |
+| Threat | Impact | Controls in Source | Verification Method |
 |---|---|---|---|
-| Analyzer input leaves the browser | Privacy loss | Core contains no network calls; UI sends only explicit lab requests to a fixed loopback origin; source boundary lint | Browser network canary is not run because the UI cannot currently be installed |
-| Plaintext appears in app logs or error output | Secret disclosure | API validation errors are sanitized; access logs are disabled in launcher; request bodies are not logged; normal response schemas omit plaintext | Runtime browser and server log inspection still required |
-| Remote site or hostile origin invokes local lab | Local operation abuse/CSRF-like request | Loopback bind, TrustedHost allowlist, exact CORS origin, mutation Origin guard | Browser cross-origin journey not tested |
-| Expensive KDF or attack exhausts resources | Local denial of service | Cost ceilings, two KDF slots, one active attack, max body/input, max attempts/time, bounded state | Native KDF call cannot be interrupted; hard process kill and stress testing are not implemented |
-| Caller turns lab into a real cracking tool | Credential compromise or abuse | Fixed synthetic target IDs and local candidate data; no import/remote target API | Source review and API tests pass; independent security review not done |
-| Job IDs are guessed or jobs cross-contaminate | Result disclosure or control | Random opaque IDs, local in-memory records, one active job, strict identifier validation and TTL | TTL cleanup and concurrency stress test remain incomplete |
-| Malicious dependency or vulnerable package | Code execution/privacy loss | Genuine npm lockfile; exact dependency versions; local lint/typechecks | Live npm audit after patched Vite 7.3.8/Vitest 4.1.12 reports zero findings; Python advisory scan not run |
-| Weak/incorrect password storage implementation | Verifier compromise | Established libraries, per-hash random salts, stored parameters, constant-time comparison where applicable, malformed verifier checks | Cross-platform clean install and independent crypto review remain outstanding |
+| Real user password leaves browser | Severe privacy loss | Core has zero network, storage, or logging dependencies; boundary linter enforces no API imports in Personal Tools | Architectural boundary lint, browser network canary test |
+| Real password entered into Research Lab | Secret exposure | Research Lab API endpoints (`/lab/hash`, `/lab/verify`) accept server-owned `fixture_id` and `candidate_variant` identifiers only; no free-form password parameters exist | Pydantic schema validation tests, API unit tests |
+| Weak or biased random generation | Password predictability | Mandatory `crypto.getRandomValues()` with rejection sampling for unbiased mapping; fail closed if CSPRNG unavailable | Core generator unit tests, PRNG source assertion |
+| Password persisted in browser storage | Local credential leakage | Passwords never written to `localStorage`, `sessionStorage`, `IndexedDB`, cookies, or cache; only theme preference stored | Storage inspection tests, privacy canary |
+| Remote site accesses loopback API (CSRF / DNS rebinding) | Unauthorized attack/KDF execution | API binds strictly to `127.0.0.1`; TrustedHostMiddleware allowlists only loopback hosts; CORS allowlists only exact local origins; mutation methods require trusted Origin/Referer | Adversarial HTTP request test suite |
+| Resource exhaustion via expensive KDF or attack | Local denial-of-service | Hard server-side ceilings on KDF costs (Argon2 time <= 4, memory <= 64 MiB; PBKDF2 <= 1M iter; bcrypt <= 14); maximum attack attempt cap (10,000) and time cap (10s); single active job queue | API bounds tests, stress/concurrency test |
+| Estimator or policy reveals secret in output | Information disclosure | `AnalysisResult` and `PolicyResult` schemas exclude original plaintext, matched substrings, or dictionary tokens; findings report only rule identifiers and educational explanations | Schema assertions, serialization tests |
+| Supply chain / dependency compromise | Code injection / exploit | Pinned package locks, zero high/critical npm audit vulnerabilities, minimal dependencies | `npm audit`, license & dependency scan |
 
-## Residual risks
+## Residual Risks
 
-This is not a complete security audit. Browser runtime behavior, dependency remediation, Windows process isolation, long-running cleanup, screen-reader accessibility, and default lifecycle installation remain unverified. Findings and evidence are tracked in [Security Audit](SECURITY-AUDIT.md) and [Privacy Verification](PRIVACY-VERIFICATION.md).
+- **Memory Retention in Garbage-Collected Runtime:** JavaScript immutable strings cannot be reliably zeroized on demand; the application minimizes retention by avoiding caching and clearing state on navigation, but cannot guarantee forensic memory erasure.
+- **Local Host Compromise:** Malware with administrative privileges or direct OS process inspection can inspect browser memory; the application does not defend against a compromised operating system.
+- **Optional Breach Check Metadata:** When the user explicitly consents to the optional HIBP range check, the 5-character SHA-1 prefix and network IP are disclosed to the external service.

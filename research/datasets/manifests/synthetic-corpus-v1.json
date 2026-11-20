@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "1.0.0",
+  "generatedAt": "2026-11-20",
+  "datasets": [
+    {
+      "id": "DS-SYNTH-STRUCT-V1",
+      "count": 1000,
+      "seed": "0x50534131",
+      "sha256": "433eafb5be15f95c50c0be343a123e9d327c611cd3f7b6dc81fc53a2ed3b6a10",
+      "description": "Synthetic structured English password population."
+    },
+    {
+      "id": "DS-SYNTH-URDU-V1",
+      "count": 500,
+      "seed": "0x50534132",
+      "sha256": "819a49985df7460baef6d3beacf8bace384b38e0df3b78f6537b18390e7dc5cd",
+      "description": "Synthetic Roman Urdu and code-switching password population."
+    }
+  ]
+}

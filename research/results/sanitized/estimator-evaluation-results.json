@@ -1,0 +1,28 @@
+{
+  "protocolId": "EVAL-EST-2026-V1",
+  "evaluationDate": "2026-11-20",
+  "model": {
+    "name": "zxcvbn-ts",
+    "version": "4.2.0"
+  },
+  "findings": {
+    "structuredEnglish": {
+      "datasetId": "DS-SYNTH-STRUCT-V1",
+      "sampleCount": 1000,
+      "spearmanRankCorrelation": 0.993,
+      "medianLogScaleError": 0.15,
+      "interpretation": "High rank correlation on common English structural primitives; estimator reliably orders spatial and date patterns."
+    },
+    "romanUrduMultilingual": {
+      "datasetId": "DS-SYNTH-URDU-V1",
+      "sampleCount": 500,
+      "spearmanRankCorrelation": 0.978,
+      "medianLogScaleError": 2.38,
+      "interpretation": "English-centric estimator treats Roman Urdu words as random characters, overestimating search complexity by 2.38 orders of magnitude."
+    }
+  },
+  "limitations": [
+    "Synthetic datasets simulate expected human structural patterns and do not represent targeted attacker intelligence.",
+    "Ground truth rank reflects bounded heuristic dictionaries, not universal cracking capabilities."
+  ]
+}
