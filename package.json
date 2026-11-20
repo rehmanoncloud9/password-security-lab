@@ -8,6 +8,7 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "node scripts/lint-boundaries.mjs && node scripts/check-contrast.mjs",
+    "test:canary": "node scripts/verify-privacy-canary.mjs",
     "dev": "node scripts/dev.mjs"
   },
   "engines": { "node": ">=24 <25", "npm": ">=11 <12" }
