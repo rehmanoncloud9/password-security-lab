@@ -34,8 +34,19 @@ export interface ApiHealth {
   readonly storedVerifiers: number;
 }
 
+export type CandidateVariant = "correct" | "wrong" | "modified";
+
+export interface LabFixture {
+  readonly fixtureId: string;
+  readonly label: string;
+  readonly description: string;
+  readonly candidatePreview: string;
+  readonly availableVariants: readonly string[];
+}
+
 export interface HashRecord {
   readonly hashId: string;
+  readonly fixtureId: string;
   readonly algorithm: LabAlgorithm;
   readonly storedHash: string;
   readonly parameters: Record<string, number>;
