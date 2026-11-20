@@ -1,4 +1,8 @@
-"""Local-only FastAPI laboratory API. Do not enable access-body logging."""
+"""Local-only FastAPI laboratory API. Do not enable access-body logging.
+
+Operating strictly on server-owned synthetic fixtures.
+Arbitrary user passwords are not accepted.
+"""
 
 from __future__ import annotations
 
@@ -18,10 +22,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from .attacks import public_job, run_job
-from .benchmark import measure
+from .attacks import TARGETS, public_job, run_job
+from .benchmark import DEFAULT_REPETITIONS, measure
 from .crypto import ResourceBusyError, hash_password, verify_password
-from .schemas import AttackRequest, HashRequest, VerifyRequest
+from .fixtures import SYNTHETIC_FIXTURES, get_fixture, get_variant_candidate
+from .schemas import (
+    AttackRequest,
+    BenchmarkRequest,
+    HashRequest,
+    VerifyRequest,
+)
 from .state import (
     LOCK,
     MAX_HASH_RECORDS,
@@ -123,10 +133,10 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Password Security Laboratory API",
-    version="0.1.0",
+    version="0.2.0",
     description=(
         "Loopback educational password storage and bounded synthetic attack laboratory. "
-        "Use synthetic examples only. Request bodies are not logged."
+        "Operates only on server-owned synthetic fixtures. Personal credentials must never be sent."
     ),
     docs_url="/docs",
     redoc_url="/redoc",
@@ -145,6 +155,22 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' http://127.0.0.1:5173; "
+        "connect-src 'self' http://127.0.0.1:8000; "
+        "frame-ancestors 'none';"
+    )
+    return response
+
+
+@app.middleware("http")
 async def origin_guard(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -156,9 +182,8 @@ async def origin_guard(
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(_request: Request, _exc: RequestValidationError) -> JSONResponse:
-    # Pydantic details may include the submitted password under `input`; never echo it.
     return JSONResponse(
-        {"detail": "Invalid request. Check the documented field formats and limits."},
+        {"detail": "Invalid request. Check the documented field formats, fixture IDs, and limits."},
         status_code=422,
     )
 
@@ -186,23 +211,47 @@ def health() -> dict[str, Any]:
     }
 
 
+@app.get("/lab/fixtures")
+def list_fixtures() -> list[dict[str, Any]]:
+    """Return the registry of server-owned synthetic fixtures for demonstrations."""
+    return [
+        {
+            "fixtureId": item["id"],
+            "label": item["label"],
+            "description": item["description"],
+            "candidatePreview": item["candidate"],
+            "availableVariants": list(item["variants"].keys()),
+        }
+        for item in SYNTHETIC_FIXTURES.values()
+    ]
+
+
 @app.post("/lab/benchmark", operation_id="runBenchmarkSingular")
 @app.post("/lab/benchmarks", operation_id="runBenchmark")
-def benchmark() -> dict[str, Any]:
+def benchmark(payload: BenchmarkRequest | None = None) -> dict[str, Any]:
+    repetitions = (
+        payload.repetitions if payload and payload.repetitions is not None else DEFAULT_REPETITIONS
+    )
     if not BENCHMARK_LOCK.acquire(blocking=False):
         raise HTTPException(status_code=429, detail="A benchmark is already running.")
     try:
-        return measure()
+        return measure(repetitions=repetitions)
     except ResourceBusyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
     finally:
         BENCHMARK_LOCK.release()
 
 
 @app.post("/lab/hash")
 def create_hash(payload: HashRequest) -> dict[str, Any]:
-    if len(payload.password.encode("utf-8")) > 4096:
-        raise HTTPException(status_code=413, detail="Input exceeds the lab byte limit.")
+    """Hash a server-owned synthetic fixture. Free-form personal passwords are not accepted."""
+    try:
+        fixture = get_fixture(payload.fixture_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
     try:
         options = {
             key: value
@@ -215,7 +264,7 @@ def create_hash(payload: HashRequest) -> dict[str, Any]:
             }.items()
             if value is not None
         }
-        material = hash_password(payload.password, payload.algorithm, options)
+        material = hash_password(fixture["candidate"], payload.algorithm, options)
     except ResourceBusyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from None
     except ValueError as exc:
@@ -227,7 +276,9 @@ def create_hash(payload: HashRequest) -> dict[str, Any]:
                 status_code=503, detail="The short-lived demo store is full; retry shortly."
             )
         hash_id = new_id()
-        hash_records[hash_id] = HashRecord(material, time.monotonic() + TTL_SECONDS)
+        hash_records[hash_id] = HashRecord(
+            material, time.monotonic() + TTL_SECONDS, fixture_id=payload.fixture_id
+        )
     return {
         "hashId": hash_id,
         "algorithm": material.algorithm,
@@ -236,20 +287,27 @@ def create_hash(payload: HashRequest) -> dict[str, Any]:
         "salt": material.salt_display,
         "generationMs": round(material.elapsed_ms, 3),
         "expiresInSeconds": TTL_SECONDS,
+        "fixtureId": payload.fixture_id,
     }
 
 
 @app.post("/lab/verify")
 def verify(payload: VerifyRequest) -> dict[str, Any]:
+    """Verify a synthetic candidate variant against a stored demo verifier."""
     cleanup()
     with LOCK:
         record = hash_records.get(payload.hash_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Demo verifier expired or does not exist.")
+    try:
+        candidate_text = get_variant_candidate(record.fixture_id, payload.candidate_variant)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
     started = time.perf_counter_ns()
     try:
         matched = verify_password(
-            payload.password, record.material.algorithm, record.material.encoded
+            candidate_text, record.material.algorithm, record.material.encoded
         )
     except ResourceBusyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from None
@@ -259,6 +317,8 @@ def verify(payload: VerifyRequest) -> dict[str, Any]:
         "matched": matched,
         "algorithm": record.material.algorithm,
         "verificationMs": round((time.perf_counter_ns() - started) / 1_000_000, 3),
+        "candidateVariant": payload.candidate_variant,
+        "fixtureId": record.fixture_id,
     }
 
 
@@ -268,33 +328,30 @@ def delete_hash(hash_id: str) -> dict[str, str]:
         raise HTTPException(status_code=404, detail="Demo verifier not found.")
     with LOCK:
         if hash_records.pop(hash_id, None) is None:
-            raise HTTPException(status_code=404, detail="Demo verifier expired or does not exist.")
+            raise HTTPException(status_code=404, detail="Demo verifier not found.")
     return {"status": "cleared"}
 
 
 def _run_and_release(job: JobRecord, payload: AttackRequest) -> None:
-    global active_job_id
     try:
         run_job(job, payload)
     except Exception as exc:
-        # Keep the job terminal and observable without logging exception text,
-        # which could include request-derived data from a native crypto library.
-        LOGGER.error("Synthetic attack worker failed with %s", type(exc).__name__)
+        LOGGER.error("Attack experiment failed unexpectedly: %s", type(exc).__name__)
         with LOCK:
             job.state = "error"
             job.stop_reason = "error"
             job.expires_at = time.monotonic() + 60
     finally:
         with LOCK:
+            global active_job_id
             if active_job_id == job.job_id:
                 active_job_id = None
 
 
+@app.post("/lab/attack", status_code=202)
 @app.post("/lab/attacks", status_code=202)
-def create_attack(payload: AttackRequest) -> dict[str, Any]:
+def start_attack(payload: AttackRequest) -> dict[str, Any]:
     global active_job_id
-    from .attacks import TARGETS
-
     cleanup()
     if TARGETS[payload.target_id][0] != payload.experiment:
         raise HTTPException(
@@ -310,9 +367,9 @@ def create_attack(payload: AttackRequest) -> dict[str, Any]:
                 status_code=503, detail="The short-lived job store is full; retry shortly."
             )
         job_id = new_id()
+        active_job_id = job_id
         job = JobRecord(job_id, "queued", payload.experiment, payload.algorithm, {})
         jobs[job_id] = job
-        active_job_id = job_id
         job.state = "running"
         worker = threading.Thread(target=_run_and_release, args=(job, payload), daemon=True)
         try:
@@ -328,6 +385,7 @@ def create_attack(payload: AttackRequest) -> dict[str, Any]:
     return public_job(job)
 
 
+@app.get("/lab/attack/{job_id}")
 @app.get("/lab/attacks/{job_id}")
 def get_attack(job_id: str) -> dict[str, Any]:
     if len(job_id) < 32 or len(job_id) > 64 or not all(c.isalnum() or c in "_-" for c in job_id):
@@ -340,6 +398,7 @@ def get_attack(job_id: str) -> dict[str, Any]:
     return public_job(job)
 
 
+@app.delete("/lab/attack/{job_id}")
 @app.delete("/lab/attacks/{job_id}")
 def cancel_attack(job_id: str) -> dict[str, Any]:
     if len(job_id) < 32 or len(job_id) > 64 or not all(c.isalnum() or c in "_-" for c in job_id):
@@ -352,6 +411,18 @@ def cancel_attack(job_id: str) -> dict[str, Any]:
         if job.state in {"queued", "running"}:
             job.cancel.set()
     return public_job(job)
+
+
+@app.delete("/lab/state")
+def clear_state() -> dict[str, str]:
+    global active_job_id
+    with LOCK:
+        for job in jobs.values():
+            job.cancel.set()
+        hash_records.clear()
+        jobs.clear()
+        active_job_id = None
+    return {"status": "cleared"}
 
 
 def main() -> None:

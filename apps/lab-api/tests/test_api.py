@@ -40,70 +40,104 @@ def test_openapi_documents_health_and_both_benchmark_paths() -> None:
     assert "/lab/benchmarks" in paths
 
 
+def test_fixtures_endpoint_returns_synthetic_registry() -> None:
+    with client() as c:
+        response = c.get("/lab/fixtures")
+        assert response.status_code == 200
+        fixtures = response.json()
+        assert len(fixtures) >= 3
+        ids = {f["fixtureId"] for f in fixtures}
+        assert "fixture-alpha-baseline" in ids
+        assert "fixture-beta-structured" in ids
+        assert "fixture-gamma-compact" in ids
+
+
 def test_hash_api_creates_two_random_salts_and_verifies_both() -> None:
     with client() as c:
         one = c.post(
-            "/lab/hash", json={"password": "synthetic example", "algorithm": "pbkdf2_sha256"}
+            "/lab/hash", json={"fixture_id": "fixture-alpha-baseline", "algorithm": "pbkdf2_sha256"}
         )
         two = c.post(
-            "/lab/hash", json={"password": "synthetic example", "algorithm": "pbkdf2_sha256"}
+            "/lab/hash", json={"fixture_id": "fixture-alpha-baseline", "algorithm": "pbkdf2_sha256"}
         )
         assert one.status_code == two.status_code == 200
         a, b = one.json(), two.json()
         assert a["storedHash"] != b["storedHash"]
         assert a["salt"] != b["salt"]
         assert c.post(
-            "/lab/verify", json={"hash_id": a["hashId"], "password": "synthetic example"}
+            "/lab/verify", json={"hash_id": a["hashId"], "candidate_variant": "correct"}
         ).json()["matched"]
         assert (
-            c.post("/lab/verify", json={"hash_id": b["hashId"], "password": "wrong sample"}).json()[
-                "matched"
-            ]
+            c.post(
+                "/lab/verify", json={"hash_id": b["hashId"], "candidate_variant": "wrong"}
+            ).json()["matched"]
             is False
         )
         assert c.delete(f"/lab/hash/{a['hashId']}").json()["status"] == "cleared"
         assert (
             c.post(
-                "/lab/verify", json={"hash_id": a["hashId"], "password": "synthetic example"}
+                "/lab/verify", json={"hash_id": a["hashId"], "candidate_variant": "correct"}
             ).status_code
             == 404
         )
+
+
+def test_research_api_strictly_rejects_free_form_passwords() -> None:
+    """The Research Lab API must NEVER accept free-form user credentials."""
+    with client() as c:
+        # Submitting raw password to /lab/hash must be rejected with 422
+        bad_hash = c.post(
+            "/lab/hash",
+            json={"password": "MySecretPassword123!", "algorithm": "sha256"},
+        )
+        assert bad_hash.status_code == 422
+
+        # Submitting raw password to /lab/verify must be rejected with 422
+        bad_verify = c.post(
+            "/lab/verify",
+            json={"hash_id": "a" * 32, "password": "MySecretPassword123!"},
+        )
+        assert bad_verify.status_code == 422
 
 
 @pytest.mark.parametrize("algorithm", ["sha256", "pbkdf2_sha256", "bcrypt", "argon2id"])
 def test_hash_and_verify_endpoints_cover_every_algorithm(algorithm: str) -> None:
     with client() as c:
         created = c.post(
-            "/lab/hash", json={"password": "synthetic endpoint value", "algorithm": algorithm}
+            "/lab/hash", json={"fixture_id": "fixture-alpha-baseline", "algorithm": algorithm}
         )
         assert created.status_code == 200
         item = created.json()
         assert item["algorithm"] == algorithm
         good = c.post(
             "/lab/verify",
-            json={"hash_id": item["hashId"], "password": "synthetic endpoint value"},
+            json={"hash_id": item["hashId"], "candidate_variant": "correct"},
         )
         wrong = c.post(
-            "/lab/verify", json={"hash_id": item["hashId"], "password": "wrong endpoint value"}
+            "/lab/verify", json={"hash_id": item["hashId"], "candidate_variant": "wrong"}
         )
         assert good.json()["matched"] is True
         assert wrong.json()["matched"] is False
 
 
-def test_api_enforces_cost_floor_and_bcrypt_byte_limit() -> None:
+def test_api_enforces_cost_floor() -> None:
     c = client()
     below_floor = c.post(
         "/lab/hash",
-        json={"password": "synthetic", "algorithm": "pbkdf2_sha256", "iterations": 599_999},
+        json={
+            "fixture_id": "fixture-alpha-baseline",
+            "algorithm": "pbkdf2_sha256",
+            "iterations": 599_999,
+        },
     )
-    too_long = c.post("/lab/hash", json={"password": "é" * 37, "algorithm": "bcrypt"})
     assert below_floor.status_code == 422
-    assert too_long.status_code == 422
 
 
 def test_validation_never_echoes_submitted_secret() -> None:
     canary = "CANARY-SYNTHETIC-DO-NOT-ECHO"
-    response = client().post("/lab/hash", json={"password": canary, "algorithm": "unknown"})
+    response = client().post(
+        "/lab/hash", json={"fixture_id": "invalid-id", "canary": canary, "algorithm": "sha256"}
+    )
     assert response.status_code == 422
     assert canary not in response.text
 
@@ -112,12 +146,21 @@ def test_cross_origin_mutation_is_rejected_and_untrusted_host_is_rejected() -> N
     c = client()
     response = c.post(
         "/lab/hash",
-        json={"password": "synthetic", "algorithm": "sha256"},
+        json={"fixture_id": "fixture-alpha-baseline", "algorithm": "sha256"},
         headers={"Origin": "https://attacker.invalid"},
     )
     assert response.status_code == 403
     bad_host = TestClient(app, base_url="http://attacker.invalid").get("/lab/health")
     assert bad_host.status_code == 400
+
+
+def test_security_headers_are_present() -> None:
+    response = client().get("/lab/health")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert "default-src" in response.headers["content-security-policy"]
 
 
 def test_attack_api_only_accepts_matching_synthetic_target_and_exposes_no_target() -> None:
@@ -353,7 +396,9 @@ def test_cleanup_expires_old_hashes_and_terminal_jobs(monkeypatch) -> None:
 
 def test_hash_store_capacity_is_enforced(monkeypatch) -> None:
     monkeypatch.setattr(main_module, "MAX_HASH_RECORDS", 0)
-    response = client().post("/lab/hash", json={"password": "synthetic", "algorithm": "sha256"})
+    response = client().post(
+        "/lab/hash", json={"fixture_id": "fixture-alpha-baseline", "algorithm": "sha256"}
+    )
     assert response.status_code == 503
 
 

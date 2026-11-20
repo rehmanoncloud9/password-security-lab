@@ -18,6 +18,7 @@ LOCK = threading.RLock()
 class HashRecord:
     material: Any
     expires_at: float
+    fixture_id: str = "fixture-alpha-baseline"
 
 
 @dataclass
