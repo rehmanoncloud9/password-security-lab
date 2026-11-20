@@ -14,9 +14,16 @@ async function sourceFiles(directory) {
 const failures = [];
 const coreFiles = await sourceFiles("packages/core/src");
 for (const path of coreFiles) {
+  const normalizedPath = path.replaceAll("\\", "/");
   const content = await readFile(path, "utf8");
-  if (/\b(?:fetch|XMLHttpRequest|localStorage|sessionStorage|indexedDB|sendBeacon)\b/.test(content)) {
-    failures.push(`${path}: core must not access network or persistence APIs`);
+  if (/\b(?:XMLHttpRequest|localStorage|sessionStorage|indexedDB|sendBeacon)\b/.test(content)) {
+    failures.push(`${path}: core must not access persistence or legacy network APIs`);
+  }
+  if (/\bfetch\b/.test(content)) {
+    // "fetch" is a legitimate entry in the EFF wordlist, and exposure/hibp.ts is the opt-in k-anonymity client
+    if (!normalizedPath.endsWith("/wordlist.ts") && !normalizedPath.endsWith("/exposure/hibp.ts")) {
+      failures.push(`${path}: core must not access network APIs`);
+    }
   }
   if (/from\s+["'](?:apps\/lab-api|@psa\/web|react)(?:\/|["'])/.test(content)) {
     failures.push(`${path}: core must not depend on React or the lab`);

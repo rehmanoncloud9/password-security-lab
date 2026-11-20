@@ -28,3 +28,4 @@ artifacts/releases/*.zip
 apps/lab-api/.coverage
 apps/lab-api/htmlcov/
 Password_Security_Analyzer_Technical_Plan.pdf
+PASSWORD-SECURITY-LAB-AGENT-IMPLEMENTATION-PLAN.md

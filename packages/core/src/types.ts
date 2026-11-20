@@ -3,7 +3,23 @@
 export type StrengthBand = "very_weak" | "weak" | "moderate" | "strong" | "very_strong";
 export type FindingSeverity = "warning" | "information";
 export type CheckState = "pass" | "fail" | "not_checked" | "unavailable";
-export type PolicyId = "modern_single_factor" | "modern_mfa" | "educational_traditional";
+export type PolicyId =
+  | "modern_single_factor"
+  | "modern_mfa"
+  | "educational_traditional"
+  | "custom_service";
+
+export type BlocklistCheckState =
+  | "not_checked"
+  | "not_found_in_local_list"
+  | "found_in_local_list"
+  | "unavailable";
+
+export type ExposureCheckState =
+  | "not_checked"
+  | "not_found_in_provider_corpus"
+  | "found_in_provider_corpus"
+  | "unavailable";
 
 export interface PatternFinding {
   readonly id: string;
@@ -22,14 +38,25 @@ export interface CharacterProfile {
 }
 
 export interface AnalysisResult {
-  readonly estimator: { readonly name: "zxcvbn-ts"; readonly version: "4.2.0"; readonly method: string };
+  readonly estimator: {
+    readonly name: "zxcvbn-ts";
+    readonly version: "4.2.0";
+    readonly method: string;
+  };
   readonly score: 0 | 1 | 2 | 3 | 4;
   readonly band: StrengthBand;
   readonly estimatedGuesses: number;
+  readonly isGuessesBounded?: boolean;
   readonly findings: readonly PatternFinding[];
   readonly suggestions: readonly string[];
   readonly characterProfile: CharacterProfile;
   readonly limitations: readonly string[];
+}
+
+export interface PolicyStandardMetadata {
+  readonly name: string;
+  readonly version: string;
+  readonly reference: string;
 }
 
 export interface PolicyCheck {
@@ -42,6 +69,7 @@ export interface PolicyCheck {
 export interface PolicyResult {
   readonly policyId: PolicyId;
   readonly label: string;
+  readonly standard?: PolicyStandardMetadata;
   readonly checks: readonly PolicyCheck[];
   readonly overall: "compliant" | "non_compliant" | "incomplete";
   readonly disclaimer: string;
@@ -49,7 +77,9 @@ export interface PolicyResult {
 
 export interface PolicyOptions {
   readonly minimumLength?: number;
+  readonly maximumLength?: number;
   readonly checkBlocklist?: boolean;
+  readonly allowedPattern?: RegExp | string;
 }
 
 export interface ReusePair {
@@ -62,7 +92,11 @@ export interface ReusePair {
 export interface ReuseResult {
   readonly exactDuplicateGroups: readonly (readonly number[])[];
   readonly similarPairs: readonly ReusePair[];
-  readonly limits: { readonly maxSamples: number; readonly maxLength: number; readonly threshold: number };
+  readonly limits: {
+    readonly maxSamples: number;
+    readonly maxLength: number;
+    readonly threshold: number;
+  };
   readonly limitations: readonly string[];
 }
 
