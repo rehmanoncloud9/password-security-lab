@@ -2,64 +2,57 @@ import { ZxcvbnFactory } from "@zxcvbn-ts/core";
 import * as common from "@zxcvbn-ts/language-common";
 import * as english from "@zxcvbn-ts/language-en";
 
-const estimator = new ZxcvbnFactory({
+export const ESTIMATOR_VERSION = "4.2.0" as const;
+export const MAX_PASSWORD_CODE_POINTS = 256;
+
+const estimatorInstance = new ZxcvbnFactory({
   translations: english.translations,
   graphs: common.adjacencyGraphs,
   dictionary: { ...common.dictionary, ...english.dictionary },
-  maxLength: 256,
+  maxLength: MAX_PASSWORD_CODE_POINTS,
 });
 
-type MatcherFinding = { readonly pattern: string; readonly l33t?: boolean };
+export type MatcherFinding = { readonly pattern: string; readonly l33t?: boolean };
 
-/*
- * zxcvbn-ts exposes only its optimal match sequence from check(). That sequence
- * intentionally omits alternate matches (for example, a keyboard walk that is
- * also a dictionary word). Its matcher is a private property in the published
- * API, so keep this narrow, version-pinned adapter here and return only the
- * non-sensitive classification fields used by the UI.
- */
 type MatcherAccess = {
   readonly matching: {
     match(password: string, options?: unknown): unknown;
   };
 };
 
-const matcherAccess = estimator as unknown as MatcherAccess;
-const matching = matcherAccess.matching;
-const originalMatch = matching.match.bind(matching);
-let currentFindings: readonly MatcherFinding[] = [];
+const matcherAccess = estimatorInstance as unknown as MatcherAccess;
+if (!matcherAccess || typeof matcherAccess.matching?.match !== "function") {
+  throw new Error("zxcvbn-ts matcher adapter initialization failed: matching.match is not a function.");
+}
 
-/* Capture classifications from the same matcher pass used for the score. */
-matching.match = (password, options) => {
-  const rawMatches: unknown = originalMatch(password, options);
+/**
+ * Pure, re-entrant analysis pass against zxcvbn-ts.
+ * Has no shared mutable state across calls and produces no side-effects.
+ */
+export function checkPassword(password: string): {
+  readonly result: ReturnType<typeof estimatorInstance.check>;
+  readonly findings: readonly MatcherFinding[];
+} {
+  const result = estimatorInstance.check(password);
+  
+  // Directly invoke the matcher on the input string to collect alternate pattern findings
+  // without modifying matcher methods or storing shared state on the module.
+  const rawMatches = matcherAccess.matching.match(password);
   if (!Array.isArray(rawMatches)) {
-    throw new Error("The configured zxcvbn-ts matchers must run synchronously.");
+    throw new Error("zxcvbn-ts matching.match did not return an array.");
   }
 
-  const candidates: readonly unknown[] = rawMatches;
-  currentFindings = candidates.flatMap((candidate): MatcherFinding[] => {
+  const findings: MatcherFinding[] = rawMatches.flatMap((candidate): MatcherFinding[] => {
     if (typeof candidate !== "object" || candidate === null || !("pattern" in candidate)) {
       return [];
     }
-
-    const pattern: unknown = candidate.pattern;
+    const pattern = candidate.pattern;
     if (typeof pattern !== "string") return [];
-
-    const l33t: unknown = "l33t" in candidate ? candidate.l33t : undefined;
-    return [{ pattern, ...(typeof l33t === "boolean" ? { l33t } : {}) }];
+    const l33t = "l33t" in candidate && typeof candidate.l33t === "boolean" ? candidate.l33t : undefined;
+    return [{ pattern, ...(l33t !== undefined ? { l33t } : {}) }];
   });
-  return rawMatches;
-};
 
-export function checkPassword(password: string): {
-  readonly result: ReturnType<typeof estimator.check>;
-  readonly findings: readonly MatcherFinding[];
-} {
-  currentFindings = [];
-  const result = estimator.check(password);
-  return { result, findings: currentFindings };
+  return { result, findings };
 }
 
-export const ESTIMATOR_VERSION = "4.2.0" as const;
-export const MAX_PASSWORD_CODE_POINTS = 256;
-export { estimator };
+export { estimatorInstance as estimator };

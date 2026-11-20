@@ -17,6 +17,9 @@ const PATTERN_EXPLANATIONS: Readonly<Record<string, string>> = {
 
 const BANDS: readonly StrengthBand[] = ["very_weak", "weak", "moderate", "strong", "very_strong"];
 
+/** Maximum finite upper bound for guess representation (10^18 guesses) */
+export const MAX_FINITE_GUESS_ESTIMATE = 1e18;
+
 function profile(password: string, codePoints: number): AnalysisResult["characterProfile"] {
   return {
     codePoints,
@@ -41,26 +44,40 @@ function makeFindings(matches: readonly { readonly pattern: string; readonly l33
       return [{
         id: `pattern-${pattern}`,
         pattern,
-        severity: pattern === "bruteforce" ? "information" as const : "warning" as const,
+        severity: pattern === "bruteforce" ? ("information" as const) : ("warning" as const),
         explanation,
       }];
     });
   });
 }
 
-/** Estimate guessability locally. The result contains no password or matched token. */
+/**
+ * Estimate guessability locally entirely in browser memory.
+ * Preserves the exact entered string for analysis without silent trimming or mutation.
+ * The serialized result contains no password, substring, or matched token.
+ */
 export function analyzePassword(password: string): AnalysisResult {
   if (typeof password !== "string") throw new TypeError("Password input must be text.");
   if (password.length > MAX_PASSWORD_CODE_POINTS * 2) {
     throw new InputLimitError(`Input exceeds the ${MAX_PASSWORD_CODE_POINTS} Unicode code point limit.`);
   }
+
+  // Count Unicode code points, not UTF-16 code units (NIST SP 800-63B-4 requirement)
   const codePoints = Array.from(password).length;
   if (codePoints > MAX_PASSWORD_CODE_POINTS) {
     throw new InputLimitError(`Input exceeds the ${MAX_PASSWORD_CODE_POINTS} Unicode code point limit.`);
   }
-  const input = profile(password, codePoints);
+
+  const inputProfile = profile(password, codePoints);
   const { result, findings } = checkPassword(password);
   const score = Math.max(0, Math.min(4, result.score)) as 0 | 1 | 2 | 3 | 4;
+
+  const rawGuesses = result.guesses;
+  const isGuessesBounded = !Number.isFinite(rawGuesses) || rawGuesses >= MAX_FINITE_GUESS_ESTIMATE;
+  const estimatedGuesses = isGuessesBounded
+    ? MAX_FINITE_GUESS_ESTIMATE
+    : Math.max(1, Math.round(rawGuesses));
+
   return {
     estimator: {
       name: "zxcvbn-ts",
@@ -69,10 +86,11 @@ export function analyzePassword(password: string): AnalysisResult {
     },
     score,
     band: BANDS[score] ?? "very_weak",
-    estimatedGuesses: Number.isFinite(result.guesses) ? Math.max(1, result.guesses) : Number.MAX_VALUE,
+    estimatedGuesses,
+    isGuessesBounded,
     findings: makeFindings([...result.sequence, ...findings]),
     suggestions: [...new Set(result.feedback?.suggestions ?? [])].slice(0, 4),
-    characterProfile: input,
+    characterProfile: inputProfile,
     limitations: [
       "The estimate cannot account for private information, future leaks, or every attacker dictionary.",
       "The score and guess count are model outputs, not measured attack results or a safety guarantee.",
