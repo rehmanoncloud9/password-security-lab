@@ -18,6 +18,7 @@ import type {
   AttackExperiment,
   AttackJob,
   BenchmarkReport,
+  CandidateVariant,
   HashRecord,
   LabAlgorithm,
   LabEvent,
@@ -79,7 +80,7 @@ type HashOptions = {
 };
 
 export function App() {
-  const [page, setPage] = useState<PageId>("overview");
+  const [page, setPage] = useState<PageId>("generator");
   const [theme, setTheme] = useState<Theme>(readThemePreference);
   const [api, setApi] = useState<ApiHealth | null>(null);
   const [apiError, setApiError] = useState("");
@@ -198,16 +199,16 @@ export function App() {
     };
   }, [job?.jobId, job?.state, addEvent, recordAttack]);
 
-  async function createHash(value: string, algorithm: LabAlgorithm, options: HashOptions): Promise<boolean> {
+  async function createHash(fixtureId: string, algorithm: LabAlgorithm, options: HashOptions): Promise<boolean> {
     setLabError("");
     try {
       const record = await request<HashRecord>("/lab/hash", {
         method: "POST",
-        body: JSON.stringify({ password: value, algorithm, ...options }),
+        body: JSON.stringify({ fixture_id: fixtureId, algorithm, ...options }),
       });
       setHashes((current) => [record, ...current]);
       addEvent("success", `Created a ${algorithm.replaceAll("_", "-")} verifier using the local cryptographic library.`);
-      addSafeResult({ category: "hash", title: `${algorithm.replaceAll("_", "-")} verifier created`, outcome: "Actual local hash operation completed", durationMs: record.generationMs, algorithm: record.algorithm, parameters: record.parameters });
+      addSafeResult({ category: "hash", title: `${algorithm.replaceAll("_", "-")} verifier created`, outcome: `Actual local hash operation completed for ${record.fixtureId}`, durationMs: record.generationMs, algorithm: record.algorithm, parameters: record.parameters });
       return true;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Hash operation failed.";
@@ -217,12 +218,12 @@ export function App() {
     }
   }
 
-  async function verifyHash(hashId: string, value: string): Promise<{ matched: boolean; algorithm: string; verificationMs: number }> {
+  async function verifyHash(hashId: string, candidateVariant: CandidateVariant): Promise<{ matched: boolean; algorithm: string; verificationMs: number }> {
     setLabError("");
     try {
       const verified = await request<{ matched: boolean; algorithm: string; verificationMs: number }>("/lab/verify", {
         method: "POST",
-        body: JSON.stringify({ hash_id: hashId, password: value }),
+        body: JSON.stringify({ hash_id: hashId, candidate_variant: candidateVariant }),
       });
       const outcome = verified.matched ? "Candidate matched" : "Candidate did not match";
       addEvent(verified.matched ? "success" : "info", `${verified.algorithm.replaceAll("_", "-")} verification completed: ${outcome.toLocaleLowerCase()}.`);
@@ -383,7 +384,7 @@ export function App() {
       case "reuse":
         return <ReusePage onEvent={addEvent} onSafeResult={addSafeResult} />;
       case "generator":
-        return <GeneratorPage onEvent={addEvent} onSafeResult={addSafeResult} />;
+        return <GeneratorPage onEvent={addEvent} onSafeResult={addSafeResult} onSendToAnalysis={(val) => { setPassword(val); navigate("analysis"); }} />;
       case "hashing":
         return <HashingPage apiAvailable={Boolean(api)} hasActiveJob={Boolean(job && ["queued", "running"].includes(job.state))} hashes={hashes} operationError={labError} onCreateHash={createHash} onVerify={verifyHash} onClear={clearLab} />;
       case "attack":
