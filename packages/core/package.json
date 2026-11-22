@@ -15,7 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@zxcvbn-ts/core": "4.2.0",
+    "@zxcvbn-ts/core": "4.3.0",
     "@zxcvbn-ts/language-common": "4.2.0",
     "@zxcvbn-ts/language-en": "4.1.2"
   },
