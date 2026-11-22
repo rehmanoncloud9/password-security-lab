@@ -19,5 +19,5 @@
     "@zxcvbn-ts/language-common": "4.2.0",
     "@zxcvbn-ts/language-en": "4.1.2"
   },
-  "devDependencies": { "typescript": "5.9.3", "vitest": "4.1.12" }
+  "devDependencies": { "typescript": "5.9.3", "vitest": "5.1.1" }
 }
