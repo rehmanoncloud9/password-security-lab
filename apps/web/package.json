@@ -9,7 +9,7 @@
     "typecheck": "tsc -b tsconfig.json --pretty false",
     "test": "tsc -b test/tsconfig.json --pretty false && node test/runtime-check.mjs"
   },
-  "dependencies": { "@psa/core": "0.1.0", "lucide-react": "1.72.0", "react": "19.3.0", "react-dom": "19.3.0" },
+  "dependencies": { "@psa/core": "0.1.0", "lucide-react": "1.76.0", "react": "19.3.0", "react-dom": "19.3.0" },
   "devDependencies": {
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
